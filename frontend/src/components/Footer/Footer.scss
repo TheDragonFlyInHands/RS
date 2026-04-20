@@ -1,0 +1,16 @@
+@use '../../variables' as *;
+
+.footer {
+  width: 100%;
+  background-color: $color-footer-black;
+  color: $color-white;
+  padding: 25px;
+  text-align: center;
+  font-size: 14px;
+
+  &__contacts {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #aaaaaa;
+  }
+}

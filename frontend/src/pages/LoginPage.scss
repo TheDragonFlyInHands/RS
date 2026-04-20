@@ -1,0 +1,129 @@
+@use '../variables' as *;
+
+.login-page {
+  width: 100%;
+  min-height: calc(100vh - 200px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+}
+
+.login-container {
+  background: $color-white;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-md;
+  padding: 40px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.login-title {
+  font-size: 26px;
+  font-weight: bold;
+  text-align: center;
+  margin-bottom: 25px;
+  color: $color-black;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid $color-border;
+  border-radius: $radius-sm;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.3s;
+
+  &:focus { border-color: $color-orange; }
+  &::placeholder { color: #999; }
+}
+
+.btn-submit {
+  width: 100%;
+  padding: 14px;
+  background-color: $color-orange;
+  color: $color-white;
+  border: none;
+  border-radius: $radius-sm;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  margin-top: 10px;
+
+  &:hover { background-color: $color-green; }
+}
+
+.login-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: $color-orange;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.3s;
+  text-decoration: none;
+
+  &:hover {
+    color: $color-green;
+    text-decoration: underline;
+  }
+}
+
+.divider {
+  color: $color-border;
+  font-size: 14px;
+}
+
+// Стили для режима восстановления
+.reset-step {
+  text-align: center;
+
+  .reset-text {
+    color: $color-text-gray;
+    font-size: 14px;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+}
+
+.reset-footer {
+  margin-top: 20px;
+}
+
+.btn-back {
+  background: none;
+  border: none;
+  color: $color-text-gray;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+  transition: color 0.3s;
+
+  &:hover { color: $color-black; }
+}
+
+// Адаптивность
+@media (max-width: 600px) {
+  .login-container { padding: 25px 20px; }
+  .login-title { font-size: 22px; }
+  .login-actions { flex-direction: column; gap: 8px; }
+  .divider { display: none; }
+}

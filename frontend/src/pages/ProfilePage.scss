@@ -1,0 +1,167 @@
+@use '../variables' as *;
+
+.profile-page {
+  width: 100%;
+  min-height: calc(100vh - 200px);
+  padding: 40px 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.profile-container {
+  background: $color-white;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-md;
+  padding: 40px;
+  width: 100%;
+  max-width: 800px;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 30px;
+  border-bottom: 2px solid $color-bg-gray;
+  padding-bottom: 20px;
+}
+
+.avatar-placeholder {
+  width: 80px;
+  height: 80px;
+  background-color: $color-bg-gray;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 40px;
+  color: $color-text-gray;
+}
+
+.profile-title {
+  font-size: 24px;
+  font-weight: bold;
+  color: $color-black;
+  margin: 0;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.form-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr; // 2 колонки для полей
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  label {
+    font-size: 14px;
+    color: $color-text-gray;
+    font-weight: 500;
+  }
+
+  input {
+    padding: 12px 15px;
+    border: 2px solid $color-border;
+    border-radius: $radius-sm;
+    font-size: 15px;
+    transition: 0.3s;
+    outline: none;
+
+    &:focus {
+      border-color: $color-orange;
+    }
+  }
+}
+
+.password-section {
+  margin-top: 10px;
+  padding-top: 20px;
+  border-top: 1px dashed $color-border;
+
+  h3 {
+    font-size: 18px;
+    margin-bottom: 15px;
+    color: $color-black;
+    grid-column: span 2;
+  }
+}
+
+.profile-actions {
+  display: flex;
+  justify-content: flex-end; // Кнопки справа
+  gap: 15px;
+  margin-top: 20px;
+}
+
+.btn-save {
+  padding: 12px 30px;
+  background-color: $color-orange;
+  color: $color-white;
+  border: none;
+  border-radius: $radius-sm;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s;
+
+  &:hover { background-color: $color-green; }
+}
+
+.btn-cancel {
+  padding: 12px 30px;
+  background: transparent;
+  color: $color-text-gray;
+  border: 2px solid $color-border;
+  border-radius: $radius-sm;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s;
+
+  &:hover {
+    border-color: $color-black;
+    color: $color-black;
+  }
+}
+
+.btn-logout {
+  padding: 12px 20px;
+  background: transparent;
+  color: #dc3545; // Красный для выхода
+  border: 2px solid #dc3545;
+  border-radius: $radius-sm;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s;
+
+  &:hover {
+    background-color: #dc3545;
+    color: $color-white;
+  }
+}
+
+// Адаптивность
+@media (max-width: 600px) {
+  .form-section {
+    grid-template-columns: 1fr; // Одна колонка на телефоне
+  }
+  
+  .password-section h3 {
+    grid-column: span 1;
+  }
+
+  .profile-actions {
+    flex-direction: column-reverse;
+  }
+  
+  .btn-save, .btn-cancel, .btn-logout {
+    width: 100%;
+  }
+}

@@ -1,0 +1,53 @@
+@use '../../variables' as *;
+
+.controls {
+  background: $color-white;
+  padding: 20px;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-md;
+  margin-bottom: 25px;
+
+  &__title {
+    font-size: 15px;
+    color: $color-text-gray;
+    margin-bottom: 12px;
+    font-style: italic;
+  }
+
+  &__filters {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  &__search {
+    width: 100%;
+    padding: 12px;
+    font-size: 15px;
+    border: 2px solid $color-border;
+    border-radius: $radius-md;
+    outline: none;
+    transition: 0.3s;
+    &:focus { border-color: $color-orange; }
+  }
+}
+
+.filter-select {
+  flex: 1;
+  min-width: 140px;
+  padding: 10px;
+  border: 2px solid $color-border;
+  border-radius: $radius-sm;
+  background: $color-white;
+  color: $color-black;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.3s;
+  &:focus { border-color: $color-orange; outline: none; }
+}
+
+@media (max-width: 600px) {
+  .controls__filters { flex-direction: column; }
+  .filter-select, .controls__search { width: 100%; }
+}
