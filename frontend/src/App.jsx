@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage';
 import Footer from './components/Footer/Footer';
 import ChatButton from './components/ChatButton/ChatButton';
 import ProfilePage from './pages/ProfilePage';
+import PrivateRoute from './components/PrivateRoute';
 
 function App() {
   return (
@@ -21,7 +22,7 @@ function App() {
             <Route path="/catalog" element={<CatalogPage />} />
             <Route path="/register" element={<RegisterPage />} /> 
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>}/>
           </Routes>
         </main>
         <Footer/>

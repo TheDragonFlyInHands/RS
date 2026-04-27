@@ -1,12 +1,29 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard/ProductCard';
-import { offersData } from '../data/offersData';
 import './WelcomePage.scss';
 
 const WelcomePage = () => {
+  const [popularOffers, setPopularOffers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const popularOffers = offersData.slice(0, 3);
+  useEffect(() => {
+    // Запрос к Django серверу
+    fetch('http://localhost:8000/server_cm/products/popular/')
+      .then((response) => response.json())
+      .then((data) => {
+        setPopularOffers(data);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error('Ошибка загрузки популярных предложений:', error);
+        setLoading(false);
+      });
+  }, []);
+
+  if (loading) {
+    return <div className="welcome-page__loading">Загрузка предложений...</div>;
+  }
 
   return (
     <div className="welcome-page">
@@ -22,9 +39,13 @@ const WelcomePage = () => {
         <h2>Популярные предложения</h2>
         
         <div className="preview-grid">
-          {popularOffers.map(offer => (
-            <ProductCard key={offer.id} offer={offer} />
-          ))}
+          {popularOffers.length > 0 ? (
+            popularOffers.map((id) => (
+              <ProductCard key={id} id={id} />
+            ))
+          ) : (
+            <p className="no-offers">Пока нет доступных предложений</p>
+          )}
         </div>
       </section>
 
