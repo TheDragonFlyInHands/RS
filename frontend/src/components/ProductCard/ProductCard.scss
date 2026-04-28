@@ -8,6 +8,8 @@
   flex-direction: column;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   transition: transform 0.3s, box-shadow 0.3s;
+  margin:10px;
+  padding: 0px 0px 10px 0px;
 
   &:hover {
     transform: translateY(-5px);

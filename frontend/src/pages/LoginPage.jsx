@@ -1,30 +1,120 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './LoginPage.scss';
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const [isResetMode, setIsResetMode] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     identifier: '', // Почта или телефон
     password: '',
     resetEmail: ''
   });
 
+  // 🔹 Проверка токена при загрузке (если уже авторизован)
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      // Можно отправить запрос на сервер для валидации токена
+      fetch('http://localhost:8000/server_cm/auth/validate/', {
+        headers: { 'Authorization': `Token ${token}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.valid) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+          navigate('/profile'); // Если токен валиден — сразу в кабинет
+        }
+        else{
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('user');
+        }
+      })
+      .catch(() => {localStorage.removeItem('auth_token');localStorage.removeItem('user');}); // Если ошибка — удаляем токен
+    }
+  }, [navigate]);
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  // 🔹 Функция входа
+  const handleLogin = async (e) => {
     e.preventDefault();
+    if (!formData.identifier || !formData.password) {
+      return alert('Заполните все поля');
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch('http://localhost:8000/server_cm/auth/login/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          identifier: formData.identifier,
+          password: formData.password
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.token) {
+        localStorage.setItem('auth_token', data.token);
+        localStorage.setItem('user', JSON.stringify(data));
+        navigate('/profile');
+      } else {
+        alert(data.error || 'Неверный логин или пароль');
+      }
+    } catch (error) {
+      alert('Ошибка подключения к серверу');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🔹 Функция сброса пароля (генерация нового)
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (!formData.resetEmail) {
+      return alert('Введите почту');
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch('http://localhost:8000/server_cm/auth/reset-password/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.resetEmail })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(`Пароль сброшен! Новый пароль: ${data.new_password}\n(В реальном приложении он придёт на почту)`);
+        setIsResetMode(false);
+      } else {
+        alert(data.error || 'Пользователь не найден');
+      }
+    } catch (error) {
+      alert('Ошибка подключения к серверу');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🔹 Выход из аккаунта
+  const handleLogout = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user');
+    navigate('/');
+  };
+
+  const handleSubmit = (e) => {
     if (isResetMode) {
-      if (!formData.resetEmail) return alert('Введите почту');
-      alert(`Инструкция для сброса пароля отправлена на ${formData.resetEmail}`);
-      setIsResetMode(false); // Возврат к форме входа
+      handleResetPassword(e);
     } else {
-      if (!formData.identifier || !formData.password) return alert('Заполните все поля');
-      alert('Вход выполнен!');
-      navigate('/'); // Переход на главную после входа
+      handleLogin(e);
     }
   };
 
@@ -32,11 +122,10 @@ const LoginPage = () => {
     <div className="login-page">
       <div className="login-container">
         {isResetMode ? (
-          // 🔄 Режим восстановления пароля
           <div className="reset-step">
             <h2 className="login-title">Восстановление пароля</h2>
             <p className="reset-text">
-              Введите вашу почту, мы отправим инструкцию для сброса пароля
+              Введите вашу почту, мы сгенерируем новый пароль
             </p>
             <form onSubmit={handleSubmit} className="login-form">
               <input
@@ -47,17 +136,25 @@ const LoginPage = () => {
                 placeholder="Почта"
                 className="form-input"
                 required
+                disabled={loading}
               />
-              <button type="submit" className="btn-submit">Сбросить пароль</button>
+              <button type="submit" className="btn-submit" disabled={loading}>
+                {loading ? 'Загрузка...' : 'Сбросить пароль'}
+              </button>
             </form>
             <div className="reset-footer">
-              <button type="button" className="btn-back" onClick={() => setIsResetMode(false)}>
+              <button 
+                type="button" 
+                className="btn-back" 
+                onClick={() => setIsResetMode(false)}
+                disabled={loading}
+              >
                 Вернуться к входу
               </button>
             </div>
           </div>
         ) : (
-          // 🔐 Режим входа
+
           <>
             <h2 className="login-title">Вход в аккаунт</h2>
             <form onSubmit={handleSubmit} className="login-form">
@@ -69,6 +166,7 @@ const LoginPage = () => {
                 placeholder="Почта или телефон"
                 className="form-input"
                 required
+                disabled={loading}
               />
               <input
                 type="password"
@@ -78,14 +176,22 @@ const LoginPage = () => {
                 placeholder="Пароль"
                 className="form-input"
                 required
+                disabled={loading}
               />
-              <button type="submit" className="btn-submit">Войти</button>
+              <button type="submit" className="btn-submit" disabled={loading}>
+                {loading ? 'Вход...' : 'Войти'}
+              </button>
             </form>
 
             <div className="login-actions">
               <Link to="/register" className="btn-link">Регистрация</Link>
               <span className="divider">|</span>
-              <button type="button" className="btn-link" onClick={() => setIsResetMode(true)}>
+              <button 
+                type="button" 
+                className="btn-link" 
+                onClick={() => setIsResetMode(true)}
+                disabled={loading}
+              >
                 Восстановить пароль
               </button>
             </div>
