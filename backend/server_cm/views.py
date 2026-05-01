@@ -11,68 +11,345 @@ import os
 from django.conf import settings
 import uuid
 from django.db import transaction
+import random
+from django.db.models import Sum, Count, Q
 
-def get_popular_products(request):#нужно доделать
-    # Берём 3 самых новых продукта (сортировка по дате убывания)
+def get_employee_dashboard(request):
+    """Возвращает общую статистику и список реферальных ссылок сотрудника"""
+    auth_header = request.headers.get('Authorization', '')
+    token = auth_header.replace('Token ', '').strip()
+    
+    if not token or '_' not in token:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+        
+    try:
+        user_id = token.split('_')[0]
+        user = User.objects.get(id=user_id)
+        
+        if not user.is_employee:
+            return JsonResponse({'error': 'Access denied'}, status=403)
+            
+        # 1. Общая статистика (сумма всех ссылок сотрудника)
+        # Ищем все рефералы, где сотрудник является клиентом (создателем)
+        # Или, если в Refferals поле client - это тот, кто создал ссылку.
+        # Предположим, что employee создает ссылку, значит он client в таблице Refferals
+        
+        referrals_qs = Refferals.objects.filter(client=user)
+        
+        total_views = referrals_qs.aggregate(total=Sum('statistics__views_count'))['total'] or 0
+        total_clicks = referrals_qs.aggregate(total=Sum('statistics__clicks_count'))['total'] or 0
+        total_products = referrals_qs.values('product').distinct().count() # Уникальных продуктов
+        
+        # 2. Список ссылок с детальной статистикой
+        referrals_data = []
+        for ref in referrals_qs.select_related('product').order_by('-id'):
+            # Получаем или создаем статистику
+            stat, _ = Statistics.objects.get_or_create(ref=ref)
+            
+            referrals_data.append({
+                'id': ref.id,
+                'product_name': ref.product.name,
+                'product_id': ref.product.id,
+                'link': ref.referral_link,
+                'views': stat.views_count,
+                'clicks': stat.clicks_count
+            })
+            
+        return JsonResponse({
+            'stats': {
+                'total_views': total_views,
+                'total_clicks': total_clicks,
+                'total_products': total_products
+            },
+            'referrals': referrals_data
+        }, status=200)
+        
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'User not found'}, status=401)
 
-    popular_products = Product.objects.order_by('-data')[:3]
-    print(popular_products)
+# ==============================================================================
+# 2. ДАШБОР: Добавление новой реферальной ссылки
+# ==============================================================================
+@csrf_exempt
+def add_referral_link(request):
+    """Создает новую реферальную ссылку для продукта"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    auth_header = request.headers.get('Authorization', '')
+    token = auth_header.replace('Token ', '').strip()
+    
+    if not token or '_' not in token:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+        
+    try:
+        user_id = token.split('_')[0]
+        user = User.objects.get(id=user_id)
+        
+        if not user.is_employee:
+            return JsonResponse({'error': 'Access denied'}, status=403)
+            
+        data = json.loads(request.body)
+        product_id = data.get('product_id')
+        referral_link = data.get('referral_link', '').strip()
+        
+        if not product_id or not referral_link:
+            return JsonResponse({'error': 'Product ID and Link are required'}, status=400)
+            
+        product = Product.objects.get(id=product_id)
+        
+        with transaction.atomic():
+            # Создаем реферал
+            new_ref = Refferals.objects.create(
+                client=user,
+                product=product,
+                referral_link=referral_link
+            )
+            # Создаем запись статистики (0 просмотров, 0 кликов)
+            Statistics.objects.create(ref=new_ref, views_count=0, clicks_count=0)
+            
+        return JsonResponse({'message': 'Referral link added', 'id': new_ref.id}, status=201)
+        
+    except Product.DoesNotExist:
+        return JsonResponse({'error': 'Product not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+# ==============================================================================
+# 3. ТРЕКИНГ: Учет просмотров и кликов
+# ==============================================================================
+@csrf_exempt
+def track_view(request):
+    """+1 к просмотрам для конкретной реферальной ссылки"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+        
+    try:
+        data = json.loads(request.body)
+        referral_id = data.get('referral_id')
+        
+        if not referral_id:
+            return JsonResponse({'error': 'Referral ID required'}, status=400)
+            
+        ref = Refferals.objects.get(id=referral_id)
+        stat = Statistics.objects.get(ref=ref)
+        stat.views_count += 1
+        stat.save()
+        
+        return JsonResponse({'message': 'View tracked'}, status=200)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def track_click(request):
+    """+1 к кликам (переходам в банк) для конкретной реферальной ссылки"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+        
+    try:
+        data = json.loads(request.body)
+        referral_id = data.get('referral_id')
+        
+        if not referral_id:
+            return JsonResponse({'error': 'Referral ID required'}, status=400)
+            
+        ref = Refferals.objects.get(id=referral_id)
+        stat = Statistics.objects.get(ref=ref)
+        stat.clicks_count += 1
+        stat.save()
+        
+        return JsonResponse({'message': 'Click tracked'}, status=200)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+# ==============================================================================
+# 4. ПОИСК ПРОДУКТОВ (для модального окна дашборда)
+# ==============================================================================
+def search_products_for_referral(request):
+    """Возвращает список продуктов для выбора (с пагинацией и поиском)"""
+    query = request.GET.get('q', '')
+    page = int(request.GET.get('page', 1))
+    limit = 10
+    
+    queryset = Product.objects.all()
+    
+    if query:
+        queryset = queryset.filter(Q(name__icontains=query) | Q(description__icontains=query))
+        
+    # Пагинация
+    total_count = queryset.count()
+    start = (page - 1) * limit
+    end = start + limit
+    
+    products = queryset[start:end]
     
     data = []
-    for p in popular_products:
-        data.append(p.id)
-    print(data)
-    # safe=False позволяет вернуть список, а не словарь
-    return JsonResponse(data, safe=False)
+    for p in products:
+        data.append({
+            'id': p.id,
+            'name': p.name,
+            'category': p.category,
+            'short_description': p.short_description
+        })
+        
+    return JsonResponse({
+        'products': data,
+        'total': total_count,
+        'page': page,
+        'has_more': end < total_count
+    })
 
 def get_product_by_id(request, product_id):
     try:
         product = Product.objects.get(id=product_id)
         
-        # 1. Формируем полный URL к изображению
+        # --- Изображение ---
         image_url = None
         if product.id_image:
             image_path = os.path.join(settings.MEDIA_ROOT, product.id_image)
             if os.path.exists(image_path):
                 image_url = request.build_absolute_uri(f"{settings.MEDIA_URL}{product.id_image}")
 
-        # 2. Получаем список городов (если используется ManyToMany)
-        # Если у вас ForeignKey city, то используйте product.city.name
-        cities_names = list(product.cities.values_list('name', flat=True))
+        # --- Города (через таблицу CityList) ---
+        # Ищем записи в CityList, где product_id совпадает, и берем оттуда name города
+        cities_entries = CityList.objects.filter(product=product).select_related('city')
+        cities_names = [entry.city.name for entry in cities_entries]
+
+        # --- Ссылка (через таблицу Refferals - выбираем случайную) ---
+        target_link = None
+        # Получаем все ссылки для этого продукта
+        links_qs = Refferals.objects.filter(product=product).values_list('referral_link', flat=True)
+        
+        if links_qs.exists():
+            # Превращаем в список и выбираем случайный
+            links_list = list(links_qs)
+            target_link = random.choice(links_list)
 
         data = {
             'id': product.id,
             'name': product.name,
             'description': product.description,
             'short_description': product.short_description,
-            'image': image_url,
+            'image': image_url,  
             'category': product.category,
-            'source_url': "",  # Ссылка на оффер (хранится в address)
-            'date': product.data.isoformat() if product.data else None, # Дата создания
-            'cities': cities_names          # Список городов для вывода бейджиков
+            'cities': cities_names,       # Список названий городов
+            'source_url': target_link,    # Случайная ссылка из таблицы Refferals
+            'data': product.data.isoformat() if product.data else None,
         }
         
         return JsonResponse(data, status=200)
     except Product.DoesNotExist:
         return JsonResponse({'error': 'Product not found'}, status=404)
 
+# ==============================================================================
+# 2. СОЗДАНИЕ ПРОДУКТА (С сохранением ссылки в Refferals)
+# ==============================================================================
+def verify_employee(request):
+    """Проверка токена и роли работника"""
+    auth_header = request.headers.get('Authorization', '')
+    token = auth_header.replace('Token ', '').strip()
+    
+    if not token or '_' not in token:
+        return None, JsonResponse({'error': 'Unauthorized'}, status=401)
+        
+    try:
+        user_id = token.split('_')[0]
+        user = User.objects.get(id=user_id)
+        
+        if not user.is_employee:
+            return None, JsonResponse({'error': 'Access denied. Employees only.'}, status=403)
+            
+        return user, None
+    except User.DoesNotExist:
+        return None, JsonResponse({'error': 'User not found'}, status=401)
+
+@csrf_exempt
+def create_product(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    # ✅ Проверка авторизации и роли
+    employee, error_resp = verify_employee(request)
+    if error_resp:
+        return error_resp
+
+    try:
+        name = request.POST.get('name', '').strip()
+        category = request.POST.get('category', '').strip()
+        short_desc = request.POST.get('short_description', '').strip()
+        description = request.POST.get('description', '').strip()
+        source_url = request.POST.get('source_url', '').strip()
+        cities_list = request.POST.getlist('cities')
+
+        if not all([name, category, short_desc, cities_list]):
+            return JsonResponse({'error': 'Заполните название, категорию, описание и выберите города'}, status=400)
+
+        # 🖼️ Загрузка картинки
+        image_filename = None
+        if 'image' in request.FILES:
+            img_file = request.FILES['image']
+            ext = os.path.splitext(img_file.name)[1]
+            image_filename = f"{uuid.uuid4()}{ext}"
+            file_path = os.path.join(settings.MEDIA_ROOT, image_filename)
+            
+            os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
+            with open(file_path, 'wb+') as dest:
+                for chunk in img_file.chunks():
+                    dest.write(chunk)
+
+        # 💾 Транзакция: Создание продукта + Городов + Ссылки
+        with transaction.atomic():
+            # 1. Создаем продукт
+            product = Product.objects.create(
+                name=name,
+                category=category,
+                short_description=short_desc,
+                description=description,
+                id_image=image_filename,
+            )
+
+            # 2. Привязываем города (через CityList)
+            for city_val in cities_list:
+                city_obj = City.objects.filter(name=city_val).first() or City.objects.filter(id=city_val).first()
+                if city_obj:
+                    CityList.objects.get_or_create(product=product, city=city_obj)
+
+            # 3. 🆕 Сохраняем ссылку в таблицу Refferals
+            # Поле client обязательно, поэтому привязываем сотрудника, который создал продукт
+            if source_url:
+                Refferals.objects.create(
+                    product=product,
+                    client=employee, # Используем сотрудника как создателя ссылки
+                    referral_link=source_url
+                )
+
+        return JsonResponse({
+            'message': 'Продукт успешно добавлен',
+            'product_id': product.id
+        }, status=201)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+# ==============================================================================
+# 3. ОСТАЛЬНЫЕ ФУНКЦИИ (Фильтрация, Авторизация и т.д.)
+# ==============================================================================
 
 def get_filtered_product_ids(request):
-    """Возвращает список ID продуктов с фильтрацией"""
-    
     category = request.GET.get('category', 'all')
-    city_id = request.GET.get('city_id', 'all')  # ID города из фильтра
+    city_id = request.GET.get('city_id', 'all')
     search = request.GET.get('search', '')
     sort = request.GET.get('sort', 'newest')
 
     queryset = Product.objects.all()
-    
+
     if category and category != 'all':
         queryset = queryset.filter(category=category)
-    
+
     if city_id and city_id != 'all':
-        if city_id.isdigit():
-            queryset = queryset.filter(city_id=int(city_id))
+        # Фильтрация по городу через промежуточную таблицу CityList
+        queryset = queryset.filter(citylist__city_id=city_id)
+
     if search:
         queryset = queryset.filter(
             Q(name__icontains=search) | Q(description__icontains=search)
@@ -81,8 +358,20 @@ def get_filtered_product_ids(request):
         queryset = queryset.order_by('-data')
     else:
         queryset = queryset.order_by('data')
+        
     ids_list = list(queryset.values_list('id', flat=True))
     return JsonResponse({'ids': ids_list})
+
+def get_all_cities(request):
+    cities = list(City.objects.values('id', 'name'))
+    return JsonResponse(cities, safe=False)
+
+def get_popular_products(request):
+    popular_products = Product.objects.order_by('-data')[:3]
+    data = []
+    for p in popular_products:
+        data.append(p.id)
+    return JsonResponse(data, safe=False)
 
 
 # 🔹 Генерация случайного пароля
@@ -201,7 +490,7 @@ def validate_token_view(request):
                     'first_name': user.first_name,
                     'last_name': user.last_name,
                     'phone':user.phone,
-                    'address':user.address
+                    'city':user.city
                 }
             })
     
@@ -318,76 +607,5 @@ def get_cities(request):
         return JsonResponse({'error': 'Method not allowed'}, status=405)
         
     # Возвращаем список словарей [{'id': 1, 'name': 'Москва'}, ...]
-    cities = list(City.objects.values('id', 'name'))
-    return JsonResponse(cities, safe=False)
-
-# 🔹 2. Создание продукта (только для работников)
-@csrf_exempt
-def create_product(request):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Method not allowed'}, status=405)
-
-    # ✅ Проверка авторизации и роли
-    employee, error_resp = verify_employee(request)
-    if error_resp:
-        return error_resp
-
-    try:
-        # 📥 Чтение данных из FormData
-        name = request.POST.get('name', '').strip()
-        category = request.POST.get('category', '').strip()
-        short_desc = request.POST.get('short_description', '').strip()
-        description = request.POST.get('description', '').strip()
-        source_url = request.POST.get('source_url', '').strip()
-        cities_list = request.POST.getlist('cities')  # список выбранных городов
-
-        # ✅ Валидация обязательных полей
-        if not all([name, category, short_desc, cities_list]):
-            return JsonResponse({'error': 'Заполните название, категорию, описание и выберите города'}, status=400)
-
-        # 🖼️ Обработка загрузки изображения
-        image_filename = None
-        if 'image' in request.FILES:
-            img_file = request.FILES['image']
-            ext = os.path.splitext(img_file.name)[1]
-            image_filename = f"{uuid.uuid4()}{ext}"
-            file_path = os.path.join(settings.MEDIA_ROOT, image_filename)
-            
-            os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
-            with open(file_path, 'wb+') as dest:
-                for chunk in img_file.chunks():
-                    dest.write(chunk)
-
-        # 💾 Сохранение продукта и привязка городов в одной транзакции
-        with transaction.atomic():
-            product = Product.objects.create(
-                name=name,
-                category=category,
-                short_description=short_desc,
-                description=description,
-                address=source_url,  # source_url сохраняется в поле address модели
-                id_image=image_filename,
-                employee=employee
-            )
-
-            # Привязываем выбранные города через промежуточную таблицу CityList
-            for city_val in cities_list:
-                # Ищем город по имени или по ID (на случай если фронт шлёт разное)
-                city_obj = City.objects.filter(name=city_val).first() or City.objects.filter(id=city_val).first()
-                if city_obj:
-                    CityList.objects.get_or_create(product=product, city=city_obj)
-
-        return JsonResponse({
-            'message': 'Продукт успешно добавлен',
-        }, status=201)
-
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
-
-def get_all_cities(request):
-    if request.method != 'GET':
-        return JsonResponse({'error': 'Method not allowed'}, status=405)
-    
-    # Возвращаем только id и name
     cities = list(City.objects.values('id', 'name'))
     return JsonResponse(cities, safe=False)

@@ -11,6 +11,8 @@ import ProfilePage from './pages/ProfilePage';
 import PrivateRoute from './components/PrivateRoute';
 import AddProductPage from './pages/AddProductPage';
 import EmployeeRoute from './components/EmployeeRoute';
+import ProductPage from './pages/ProductPage';
+import DashboardPage from './pages/DashboardPage';
 
 function App() {
   return (
@@ -26,6 +28,7 @@ function App() {
             <Route path="/product/:productId" element={<ProductPage />} />
             <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>}/>
             <Route path="/products/new" element={<EmployeeRoute><AddProductPage /></EmployeeRoute>}/>
+            <Route path="/dashboard" element={<EmployeeRoute><DashboardPage /></EmployeeRoute>}/>
           </Routes>
         </main>
         <Footer/>

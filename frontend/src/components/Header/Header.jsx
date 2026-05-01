@@ -86,6 +86,10 @@ const Header = () => {
                 <Link to="/products/new" onClick={closeMenu} >
                   Добавить продукт
                 </Link>
+              )&&(
+                <Link to="/dashboard" onClick={closeMenu} >
+                  Панель управления
+                </Link>
               )}
               
               {isAuth && <Link to="/profile" onClick={closeMenu}>Личный кабинет</Link>}

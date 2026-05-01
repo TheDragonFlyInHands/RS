@@ -20,6 +20,12 @@ urlpatterns = [
     path('cities/', views.get_all_cities, name='get_all_cities'),          
     path('products/new/', views.create_product, name='create_product'),
 
+    path('dashboard/stats/', views.get_employee_dashboard, name='dashboard_stats'),
+    path('dashboard/add-referral/', views.add_referral_link, name='add_referral'),
+    path('dashboard/track/view/', views.track_view, name='track_view'),
+    path('dashboard/track/click/', views.track_click, name='track_click'),
+    path('dashboard/search-products/', views.search_products_for_referral, name='search_products'),
+
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

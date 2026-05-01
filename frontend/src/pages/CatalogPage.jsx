@@ -89,7 +89,7 @@ const CatalogPage = () => {
         onCategoryChange={handleFilterChange(setCategoryValue)}
         cityValue={cityValue}
         onCityChange={handleFilterChange(setCityValue)}
-        cities={cities}
+        cities={cities} // 🔹 Передаем загруженные города в компонент Controls
       />
 
       {/* Индикатор загрузки */}
