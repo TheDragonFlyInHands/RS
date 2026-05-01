@@ -5,82 +5,76 @@ import './Header.scss';
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAuth, setIsAuth] = useState(false);
+  const [isEmployee, setIsEmployee] = useState(false);
   const [userName, setUserName] = useState('');
+  const [userAvatar, setUserAvatar] = useState('');
   const navigate = useNavigate();
 
-  // 🔹 Функция проверки авторизации
+  // 🔹 Проверка авторизации + запрос статуса работника
   const checkAuth = () => {
     const token = localStorage.getItem('auth_token');
-    const user = localStorage.getItem('user');
     
-    if (token && user) {
-      try {
-        const userData = JSON.parse(user);
-        setIsAuth(true);
-        // Формируем имя из модели: first_name + last_name
-        setUserName(`${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Пользователь');
-      } catch {
+    if (token) {
+      setIsAuth(true);
+      
+      // 👇 Запрос на сервер для проверки is_employee
+      fetch('http://localhost:8000/server_cm/auth/check-employee/', {
+        headers: { 
+          'Authorization': `Token ${token}` 
+        }
+      })
+      .then(res => res.json())
+      .then(data => {
+        setIsEmployee(data.is_employee);
+        
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        setUserName(`${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Пользователь');
+        setUserAvatar(user.avatar_url || '');
+      })
+      .catch(() => {
+        setIsEmployee(false);
+        // При ошибке можно удалить токен
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
         setIsAuth(false);
-        setUserName('');
-      }
+      });
+      
     } else {
       setIsAuth(false);
+      setIsEmployee(false);
       setUserName('');
+      setUserAvatar('');
     }
   };
 
-  // 🔹 Проверяем при загрузке + слушаем изменения в localStorage
   useEffect(() => {
-    checkAuth(); // Проверка при монтировании
+    checkAuth();
     
-    // Слушатель для изменений localStorage (работает при выходе из аккаунта)
-    const handleStorageChange = (e) => {
-      if (e.key === 'auth_token' || e.key === 'user') {
-        checkAuth();
-      }
-    };
-    
+    // Слушатели для обновления при изменении localStorage
+    const handleStorageChange = () => checkAuth();
     window.addEventListener('storage', handleStorageChange);
-    
-    // Дополнительно: проверяем при фокусе на окне (если вкладку переключили)
-    const handleFocus = () => checkAuth();
-    window.addEventListener('focus', handleFocus);
+    window.addEventListener('focus', handleStorageChange);
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('focus', handleStorageChange);
     };
   }, []);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
   const closeMenu = () => setIsMenuOpen(false);
 
-  const handleLogin = () => {
-    navigate('/login');
-    closeMenu();
-  };
-
-  const handleRegister = () => {
-    navigate('/register');
-    closeMenu();
-  };
-
   return (
     <header className="header">
       <div className="header__container">
-        
-        {/* Левая часть: Меню + Логотип */}
         <div className="header__left">
           <div className="menu-wrapper">
             <button 
               className={`menu-toggle ${isMenuOpen ? 'active' : ''}`} 
               onClick={toggleMenu}
-              aria-label="Открыть меню"
             >
               <span className="menu-icon">
-                <span></span>
-                <span></span>
-                <span></span>
+                <span></span><span></span><span></span>
               </span>
               <span className="menu-text">{isMenuOpen ? 'Закрыть' : 'Меню'}</span>
             </button>
@@ -88,13 +82,20 @@ const Header = () => {
             <nav className={`dropdown-nav ${isMenuOpen ? 'active' : ''}`}>
               <Link to="/" onClick={closeMenu}>Главная</Link>
               <Link to="/catalog" onClick={closeMenu}>Все предложения</Link>
+              {isAuth && isEmployee && (
+                <Link to="/products/new" onClick={closeMenu} >
+                  Добавить продукт
+                </Link>
+              )}
+              
+              {isAuth && <Link to="/profile" onClick={closeMenu}>Личный кабинет</Link>}
               <Link to="/about" onClick={closeMenu}>О нас</Link>
               <Link to="/contacts" onClick={closeMenu}>Контакты</Link>
               
               {!isAuth && (
                 <>
-                  <button className="dropdown-btn" onClick={handleLogin}>Войти</button>
-                  <button className="dropdown-btn" onClick={handleRegister}>Регистрация</button>
+                  <button className="dropdown-btn" onClick={() => { navigate('/login'); closeMenu(); }}>Войти</button>
+                  <button className="dropdown-btn" onClick={() => { navigate('/register'); closeMenu(); }}>Регистрация</button>
                 </>
               )}
             </nav>
@@ -103,17 +104,20 @@ const Header = () => {
           <Link to="/" className="logo">BankOffers</Link>
         </div>
 
-        {/* Правая часть: Кнопки или Профиль */}
         <div className="header__right">
           {isAuth ? (
             <Link to="/profile" className="user-profile-link">
               <span className="user-name">{userName}</span>
-              <div className="user-avatar">👤</div>
+              <div className="user-avatar">
+                {userAvatar ? (
+                  <img src={userAvatar} alt={userName} className="user-avatar__image" />
+                ) : '👤'}
+              </div>
             </Link>
           ) : (
             <>
-              <button className="btn btn--outline" onClick={handleLogin}>Войти</button>
-              <button className="btn btn--primary" onClick={handleRegister}>Регистрация</button>
+              <button className="btn btn--outline" onClick={() => navigate('/login')}>Войти</button>
+              <button className="btn btn--primary" onClick={() => navigate('/register')}>Регистрация</button>
             </>
           )}
         </div>

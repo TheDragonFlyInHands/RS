@@ -1,0 +1,364 @@
+@use '../variables' as *;
+
+.add-product-page {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.add-product-intro {
+  background: $color-footer-black;
+  border: 6px solid $color-orange;
+  border-radius: $radius-lg;
+  color: $color-white;
+  padding: 30px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(240px, 0.8fr);
+  gap: 24px;
+
+  h1 {
+    color: $color-orange;
+    font-size: 32px;
+    margin: 0 0 12px;
+  }
+
+  p {
+    max-width: 720px;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+.add-product-intro__eyebrow {
+  display: inline-block;
+  margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.add-product-intro__side {
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  padding: 18px 22px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: $radius-md;
+
+  span {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  strong {
+    font-size: 18px;
+    line-height: 1.35;
+    margin-bottom: 8px;
+  }
+}
+
+.add-product-shell {
+  background: $color-white;
+  border-radius: $radius-lg;
+  box-shadow: $shadow-md;
+  padding: 32px;
+}
+
+.add-product-form {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.add-product-form__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.photo-upload,
+.cities-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.photo-upload {
+  grid-row: span 2;
+}
+
+.photo-upload__preview {
+  min-height: 330px;
+  border: 2px dashed $color-border;
+  border-radius: $radius-lg;
+  background: linear-gradient(135deg, rgba(255, 140, 0, 0.08), rgba(240, 240, 240, 0.8));
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &.has-image {
+    border-style: solid;
+    background: $color-bg-gray;
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    min-height: 330px;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+.photo-upload__placeholder {
+  padding: 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: $color-text-gray;
+
+  strong {
+    color: $color-black;
+    font-size: 20px;
+  }
+}
+
+.photo-upload__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.photo-upload__filename {
+  font-size: 14px;
+  color: $color-text-gray;
+}
+
+.hidden-input {
+  display: none;
+}
+
+.section-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  span {
+    font-size: 14px;
+    font-weight: 600;
+    color: $color-black;
+  }
+
+  p {
+    font-size: 14px;
+    color: $color-text-gray;
+  }
+}
+
+.cities-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.city-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 2px solid $color-border;
+  border-radius: $radius-md;
+  cursor: pointer;
+  transition: 0.3s;
+  color: $color-black;
+  background: $color-white;
+
+  input {
+    accent-color: $color-orange;
+    flex-shrink: 0;
+  }
+
+  span {
+    font-size: 14px;
+    line-height: 1.35;
+  }
+
+  &:hover,
+  &.is-selected {
+    border-color: $color-orange;
+    background: rgba(255, 140, 0, 0.08);
+  }
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  span {
+    font-size: 14px;
+    font-weight: 600;
+    color: $color-black;
+  }
+
+  input,
+  textarea,
+  select {
+    width: 100%;
+    padding: 13px 15px;
+    border: 2px solid $color-border;
+    border-radius: $radius-sm;
+    font-size: 15px;
+    font-family: inherit;
+    color: $color-black;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.3s, box-shadow 0.3s;
+
+    &:focus {
+      border-color: $color-orange;
+      box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.12);
+    }
+
+    &::placeholder {
+      color: #9b9b9b;
+    }
+  }
+}
+
+.form-field--full,
+.cities-section {
+  grid-column: 1 / -1;
+}
+
+.form-message {
+  padding: 14px 16px;
+  border-radius: $radius-md;
+  font-size: 15px;
+  font-weight: 500;
+
+  &.is-error {
+    background: rgba(220, 53, 69, 0.08);
+    color: #b42318;
+    border: 1px solid rgba(220, 53, 69, 0.18);
+  }
+
+  &.is-success {
+    background: rgba(40, 167, 69, 0.1);
+    color: #166534;
+    border: 1px solid rgba(40, 167, 69, 0.2);
+  }
+}
+
+.form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 6px;
+}
+
+.form-footer__link {
+  color: $color-text-gray;
+  text-decoration: none;
+  font-weight: 600;
+  transition: 0.3s;
+
+  &:hover {
+    color: $color-orange;
+  }
+}
+
+.primary-button,
+.secondary-button {
+  min-height: 46px;
+  padding: 0 22px;
+  border-radius: $radius-sm;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.primary-button {
+  background: $color-orange;
+  color: $color-white;
+  border: none;
+
+  &:hover {
+    background: $color-green;
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: wait;
+  }
+}
+
+.secondary-button {
+  background: transparent;
+  color: $color-black;
+  border: 2px solid $color-black;
+
+  &:hover {
+    background: $color-orange;
+    border-color: $color-orange;
+    color: $color-white;
+  }
+}
+
+@media (max-width: 900px) {
+  .add-product-intro,
+  .add-product-form__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .photo-upload {
+    grid-row: auto;
+  }
+
+  .cities-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .add-product-intro,
+  .add-product-shell {
+    padding: 22px 18px;
+  }
+
+  .add-product-intro h1 {
+    font-size: 26px;
+  }
+
+  .photo-upload__preview {
+    min-height: 240px;
+  }
+
+  .photo-upload__preview img {
+    min-height: 240px;
+  }
+
+  .cities-grid,
+  .form-footer {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .form-footer {
+    align-items: stretch;
+  }
+
+  .form-footer__link,
+  .primary-button,
+  .secondary-button {
+    width: 100%;
+    text-align: center;
+  }
+}

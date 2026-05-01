@@ -5,13 +5,17 @@ import secrets
 import string
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.hashers import make_password, check_password
-from .models import User  # или Client, в зависимости от вашей модели
+from .models import User
 import json
+import os
+from django.conf import settings
+import uuid
+from django.db import transaction
 
 def get_popular_products(request):#нужно доделать
     # Берём 3 самых новых продукта (сортировка по дате убывания)
 
-    popular_products = Product.objects.order_by('-date')[:3]
+    popular_products = Product.objects.order_by('-data')[:3]
     print(popular_products)
     
     data = []
@@ -22,27 +26,33 @@ def get_popular_products(request):#нужно доделать
     return JsonResponse(data, safe=False)
 
 def get_product_by_id(request, product_id):
-    """Возвращает данные одного продукта по ID"""
     try:
         product = Product.objects.get(id=product_id)
         
-        # Получаем название города (если есть)
-        city_name = product.city.name if product.city else None
-        
+        # 1. Формируем полный URL к изображению
+        image_url = None
+        if product.id_image:
+            image_path = os.path.join(settings.MEDIA_ROOT, product.id_image)
+            if os.path.exists(image_path):
+                image_url = request.build_absolute_uri(f"{settings.MEDIA_URL}{product.id_image}")
+
+        # 2. Получаем список городов (если используется ManyToMany)
+        # Если у вас ForeignKey city, то используйте product.city.name
+        cities_names = list(product.cities.values_list('name', flat=True))
+
         data = {
             'id': product.id,
             'name': product.name,
             'description': product.description,
             'short_description': product.short_description,
-            'id_image': product.id_image,
+            'image': image_url,
             'category': product.category,
-            'city': city_name,
-            'city_id': product.city.id if product.city else None,
-            'date': product.date.isoformat() if product.date else None,
+            'source_url': "",  # Ссылка на оффер (хранится в address)
+            'date': product.data.isoformat() if product.data else None, # Дата создания
+            'cities': cities_names          # Список городов для вывода бейджиков
         }
         
         return JsonResponse(data, status=200)
-        
     except Product.DoesNotExist:
         return JsonResponse({'error': 'Product not found'}, status=404)
 
@@ -68,19 +78,12 @@ def get_filtered_product_ids(request):
             Q(name__icontains=search) | Q(description__icontains=search)
         )
     if sort == 'newest':
-        queryset = queryset.order_by('-date')
+        queryset = queryset.order_by('-data')
     else:
-        queryset = queryset.order_by('date')
+        queryset = queryset.order_by('data')
     ids_list = list(queryset.values_list('id', flat=True))
     return JsonResponse({'ids': ids_list})
 
-import secrets
-import string
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.contrib.auth.hashers import make_password, check_password
-from .models import User  # или Client, в зависимости от вашей модели
-import json
 
 # 🔹 Генерация случайного пароля
 def generate_password(length=10):
@@ -135,9 +138,9 @@ def login_view(request):
             'user_id': user.id,
             'email': user.email,
             'first_name': user.first_name,
-            'last_name': user.surname,
+            'last_name': user.last_name,
             'phone':user.phone,
-            'address':user.address
+            'city':user.city
         })
         
     except Exception as e:
@@ -178,7 +181,6 @@ def reset_password_view(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
 
-# 🔹 Валидация токена (проверка сессии)
 @csrf_exempt
 def validate_token_view(request):
     token = request.headers.get('Authorization', '').replace('Token ', '')
@@ -186,7 +188,6 @@ def validate_token_view(request):
     if not token:
         return JsonResponse({'valid': False})
     
-    # 🔸 Простая проверка: в реальном приложении проверяйте токен в БД или декодируйте JWT
     if '_' in token:
         user_id = token.split('_')[0]
         user = User.objects.filter(id=user_id).first()
@@ -198,7 +199,7 @@ def validate_token_view(request):
                     'user_id': user.id,
                     'email': user.email,
                     'first_name': user.first_name,
-                    'last_name': user.surname,
+                    'last_name': user.last_name,
                     'phone':user.phone,
                     'address':user.address
                 }
@@ -207,52 +208,186 @@ def validate_token_view(request):
     return JsonResponse({'valid': False})
 @csrf_exempt
 def update_profile(request):
-    # Разрешаем PUT и POST
-    if request.method not in ['PUT', 'POST']:
+    if request.method not in ['POST', 'PUT', 'PATCH']:
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
-    # 1. Проверка авторизации
+    auth_header = request.headers.get('Authorization', '')
+    token = auth_header.replace('Token ', '').strip()
+    
+    if not token or '_' not in token:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+
+    try:
+        user_id = token.split('_')[0]
+        user = User.objects.get(id=user_id)
+    except (User.DoesNotExist, ValueError):
+        return JsonResponse({'error': 'User not found'}, status=404)
+
+    first_name = request.POST.get('first_name', user.first_name)
+    last_name = request.POST.get('last_name', user.last_name)
+    phone = request.POST.get('phone', user.phone)
+    city = request.POST.get('city', user.city)
+
+    user.first_name = first_name
+    user.last_name = last_name
+    user.phone = phone
+    user.city = city
+
+    new_password = request.POST.get('newPassword')
+    confirm_password = request.POST.get('confirmPassword')
+    
+    if new_password:
+        user.password = make_password(new_password)
+
+    if 'avatar' in request.FILES:
+        avatar_file = request.FILES['avatar']
+        file_extension = os.path.splitext(avatar_file.name)[1]
+        unique_name = f"{uuid.uuid4()}{file_extension}"
+
+        file_path = os.path.join(settings.MEDIA_ROOT, unique_name)
+        
+        with open(file_path, 'wb+') as destination:
+            for chunk in avatar_file.chunks():
+                destination.write(chunk)
+
+        user.id_image = unique_name
+
+    user.save()
+    return JsonResponse({
+        'message': 'Profile updated',
+        'user': {
+            'id': user.id,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'phone': user.phone,
+            'city': user.city,
+            'email': user.email,
+            'id_image': user.id_image,
+            'avatar_url': request.build_absolute_uri(f'{settings.MEDIA_URL}{user.id_image}') if user.id_image else '', 
+        }
+    })
+
+def check_is_employee(request):
+    """
+    Проверяет, является ли пользователь работником.
+    Возвращает {'is_employee': True} или False.
+    """
     auth_header = request.headers.get('Authorization', '')
     token = auth_header.replace('Token ', '')
     
     if not token or '_' not in token:
-        return JsonResponse({'error': 'Необходима авторизация'}, status=401)
+        return JsonResponse({'is_employee': False, 'error': 'Token missing'}, status=401)
+        
+    try:
+        # Извлекаем ID из токена (формат: id_случайнаястрока)
+        user_id = token.split('_')[0]
+        
+        # Ищем пользователя в базе
+        user = User.objects.get(id=user_id)
+        
+        # Возвращаем значение поля is_employee
+        return JsonResponse({'is_employee': user.is_employee}, status=200)
+        
+    except User.DoesNotExist:
+        return JsonResponse({'is_employee': False, 'error': 'User not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'is_employee': False, 'error': str(e)}, status=500)
 
+def verify_employee(request):
+    auth_header = request.headers.get('Authorization', '')
+    token = auth_header.replace('Token ', '').strip()
+    
+    if not token or '_' not in token:
+        return None, JsonResponse({'error': 'Unauthorized'}, status=401)
+        
     try:
         user_id = token.split('_')[0]
-        client = User.objects.get(id=user_id)
-    except (User.DoesNotExist, ValueError):
-        return JsonResponse({'error': 'Пользователь не найден'}, status=404)
+        user = User.objects.get(id=user_id)
+        
+        if not user.is_employee:
+            return None, JsonResponse({'error': 'Access denied. Employees only.'}, status=403)
+            
+        return user, None
+    except User.DoesNotExist:
+        return None, JsonResponse({'error': 'User not found'}, status=401)
 
-    # 2. Парсинг JSON
+# 🔹 1. Получение списка городов (для выпадающего списка на фронте)
+@csrf_exempt
+def get_cities(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+        
+    # Возвращаем список словарей [{'id': 1, 'name': 'Москва'}, ...]
+    cities = list(City.objects.values('id', 'name'))
+    return JsonResponse(cities, safe=False)
+
+# 🔹 2. Создание продукта (только для работников)
+@csrf_exempt
+def create_product(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+
+    # ✅ Проверка авторизации и роли
+    employee, error_resp = verify_employee(request)
+    if error_resp:
+        return error_resp
+
     try:
-        data = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Неверный формат данных'}, status=400)
+        # 📥 Чтение данных из FormData
+        name = request.POST.get('name', '').strip()
+        category = request.POST.get('category', '').strip()
+        short_desc = request.POST.get('short_description', '').strip()
+        description = request.POST.get('description', '').strip()
+        source_url = request.POST.get('source_url', '').strip()
+        cities_list = request.POST.getlist('cities')  # список выбранных городов
 
-    # 3. Обновление полей (только разрешённые для безопасности)
-    allowed_fields = ['first_name', 'last_name', 'phone', 'address']
-    for field in allowed_fields:
-        if field in data:
-            setattr(client, field, data[field])
+        # ✅ Валидация обязательных полей
+        if not all([name, category, short_desc, cities_list]):
+            return JsonResponse({'error': 'Заполните название, категорию, описание и выберите города'}, status=400)
 
-    # 4. Обработка смены пароля
-    if 'newPassword' in data and data['newPassword']:
-        if data.get('confirmPassword') != data['newPassword']:
-            return JsonResponse({'error': 'Пароли не совпадают'}, status=400)
-        client.password = make_password(data['newPassword'])
+        # 🖼️ Обработка загрузки изображения
+        image_filename = None
+        if 'image' in request.FILES:
+            img_file = request.FILES['image']
+            ext = os.path.splitext(img_file.name)[1]
+            image_filename = f"{uuid.uuid4()}{ext}"
+            file_path = os.path.join(settings.MEDIA_ROOT, image_filename)
+            
+            os.makedirs(settings.MEDIA_ROOT, exist_ok=True)
+            with open(file_path, 'wb+') as dest:
+                for chunk in img_file.chunks():
+                    dest.write(chunk)
 
-    client.save()
+        # 💾 Сохранение продукта и привязка городов в одной транзакции
+        with transaction.atomic():
+            product = Product.objects.create(
+                name=name,
+                category=category,
+                short_description=short_desc,
+                description=description,
+                address=source_url,  # source_url сохраняется в поле address модели
+                id_image=image_filename,
+                employee=employee
+            )
 
-    # 5. Возвращаем обновлённые данные
-    return JsonResponse({
-        'message': 'Профиль успешно обновлён',
-        'user': {
-            'id': client.id,
-            'first_name': client.first_name,
-            'last_name': client.last_name,
-            'email': client.email,
-            'phone': client.phone,
-            'address': client.address
-        }
-    })
+            # Привязываем выбранные города через промежуточную таблицу CityList
+            for city_val in cities_list:
+                # Ищем город по имени или по ID (на случай если фронт шлёт разное)
+                city_obj = City.objects.filter(name=city_val).first() or City.objects.filter(id=city_val).first()
+                if city_obj:
+                    CityList.objects.get_or_create(product=product, city=city_obj)
+
+        return JsonResponse({
+            'message': 'Продукт успешно добавлен',
+        }, status=201)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+def get_all_cities(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    # Возвращаем только id и name
+    cities = list(City.objects.values('id', 'name'))
+    return JsonResponse(cities, safe=False)

@@ -1,71 +1,115 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ProfilePage.scss';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
-  
+  const fileInputRef = useRef(null);
+
   const [userData, setUserData] = useState(() => {
     try {
       const stored = localStorage.getItem('user');
       return stored ? JSON.parse(stored) : {};
-    } catch { return {}; }
+    } catch {
+      return {};
+    }
   });
 
   const [originalData, setOriginalData] = useState(userData);
   const [passwordData, setPasswordData] = useState({ newPassword: '', confirmPassword: '' });
   const [loading, setLoading] = useState(false);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarPreview, setAvatarPreview] = useState(userData.avatar_url || '');
+  const [avatarLabel, setAvatarLabel] = useState('');
 
-  const handleUserChange = (e) => {
-    setUserData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  const resetAvatarPreview = () => {
+    if (avatarPreview && avatarPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(avatarPreview);
+    }
   };
 
-  const handlePasswordChange = (e) => {
-    setPasswordData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleUserChange = (event) => {
+    setUserData((prev) => ({ ...prev, [event.target.name]: event.target.value }));
   };
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    
+  const handlePasswordChange = (event) => {
+    setPasswordData((prev) => ({ ...prev, [event.target.name]: event.target.value }));
+  };
+
+  const handleChooseAvatar = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = (event) => {
+    const [file] = event.target.files || [];
+
+    if (!file) {
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Файл слишком большой. Выберите изображение до 5 МБ.');
+      event.target.value = '';
+      return;
+    }
+
+    resetAvatarPreview();
+
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+    setAvatarLabel(file.name);
+    event.target.value = '';
+  };
+
+  const handleSave = async (event) => {
+    event.preventDefault();
+
     if (passwordData.newPassword && passwordData.newPassword !== passwordData.confirmPassword) {
       alert('Пароли не совпадают!');
       return;
     }
 
     setLoading(true);
+
     try {
       const token = localStorage.getItem('auth_token');
-      const payload = {
-        first_name: userData.first_name,
-        last_name: userData.last_name,
-        phone: userData.phone,
-        address: userData.address,
-      };
+      const payload = new FormData();
+
+      payload.append('first_name', userData.first_name || '');
+      payload.append('last_name', userData.last_name || '');
+      payload.append('phone', userData.phone || '');
+      payload.append('city', userData.city || '');
 
       if (passwordData.newPassword) {
-        payload.newPassword = passwordData.newPassword;
-        payload.confirmPassword = passwordData.confirmPassword;
+        payload.append('newPassword', passwordData.newPassword);
+        payload.append('confirmPassword', passwordData.confirmPassword);
+      }
+
+      if (avatarFile) {
+        payload.append('avatar', avatarFile);
       }
 
       const response = await fetch('http://localhost:8000/server_cm/auth/update-profile/', {
-        method: 'PUT',
+        method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${token}`
+          'Authorization': `Token ${token}`,
         },
-        body: JSON.stringify(payload)
+        body: payload,
       });
 
       const result = await response.json();
 
       if (response.ok) {
         alert('✅ Данные успешно сохранены!');
-        // Обновляем localStorage и исходные данные для отмены
         localStorage.setItem('user', JSON.stringify(result.user));
+        setUserData(result.user);
         setOriginalData(result.user);
         setPasswordData({ newPassword: '', confirmPassword: '' });
-        // Сообщаем Header, что данные обновились
-        window.dispatchEvent(new Event('storage'));
+        setAvatarFile(null);
+        resetAvatarPreview();
+        setAvatarPreview(result.user.avatar_url || '');
+        setAvatarLabel('');
+        window.dispatchEvent(new Event('authchange'));
       } else {
         alert(`❌ ${result.error || 'Ошибка сохранения'}`);
       }
@@ -81,6 +125,10 @@ const ProfilePage = () => {
     if (window.confirm('Отменить несохранённые изменения?')) {
       setUserData(originalData);
       setPasswordData({ newPassword: '', confirmPassword: '' });
+      setAvatarFile(null);
+      resetAvatarPreview();
+      setAvatarPreview(originalData.avatar_url || '');
+      setAvatarLabel('');
     }
   };
 
@@ -88,17 +136,46 @@ const ProfilePage = () => {
     if (window.confirm('Выйти из аккаунта?')) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
-      window.dispatchEvent(new Event('storage')); // Обновит Header
+      window.dispatchEvent(new Event('authchange'));
       navigate('/');
     }
   };
+
+  const renderedAvatar = avatarPreview || userData.avatar_url || '';
 
   return (
     <div className="profile-page">
       <div className="profile-container">
         <div className="profile-header">
-          <div className="avatar-placeholder">👤</div>
-          <h2 className="profile-title">Личный кабинет</h2>
+          <div className="profile-avatar">
+            {renderedAvatar ? (
+              <img src={renderedAvatar} alt="Фото профиля" className="profile-avatar__image" />
+            ) : (
+              <span className="profile-avatar__placeholder">👤</span>
+            )}
+          </div>
+
+          <div className="profile-header__content">
+            <h2 className="profile-title">Личный кабинет</h2>
+            <div className="profile-avatar__controls">
+              <button
+                type="button"
+                className="profile-avatar__button"
+                onClick={handleChooseAvatar}
+                disabled={loading}
+              >
+                Прикрепить фотографию
+              </button>
+              {avatarLabel && <span className="profile-avatar__filename">{avatarLabel}</span>}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="profile-avatar__input"
+              onChange={handleAvatarChange}
+            />
+          </div>
         </div>
 
         <form onSubmit={handleSave} className="profile-form">
@@ -120,8 +197,8 @@ const ProfilePage = () => {
               <input type="email" name="email" value={userData.email || ''} readOnly className="readonly-input" />
             </div>
             <div className="form-group">
-              <label>Город / Адрес</label>
-              <input type="text" name="address" value={userData.address || ''} onChange={handleUserChange} />
+              <label>Город</label>
+              <input type="text" name="city" value={userData.city || ''} onChange={handleUserChange} />
             </div>
           </div>
 
@@ -129,11 +206,23 @@ const ProfilePage = () => {
             <h3>Смена пароля</h3>
             <div className="form-group">
               <label>Новый пароль</label>
-              <input type="password" name="newPassword" value={passwordData.newPassword} onChange={handlePasswordChange} placeholder="Оставьте пустым, если не меняете" />
+              <input
+                type="password"
+                name="newPassword"
+                value={passwordData.newPassword}
+                onChange={handlePasswordChange}
+                placeholder="Оставьте пустым, если не меняете"
+              />
             </div>
             <div className="form-group">
               <label>Подтвердите новый пароль</label>
-              <input type="password" name="confirmPassword" value={passwordData.confirmPassword} onChange={handlePasswordChange} placeholder="Повторите пароль" />
+              <input
+                type="password"
+                name="confirmPassword"
+                value={passwordData.confirmPassword}
+                onChange={handlePasswordChange}
+                placeholder="Повторите пароль"
+              />
             </div>
           </div>
 

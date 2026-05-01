@@ -31,7 +31,7 @@ const LoginPage = () => {
           localStorage.removeItem('user');
         }
       })
-      .catch(() => {localStorage.removeItem('auth_token');localStorage.removeItem('user');}); // Если ошибка — удаляем токен
+      .catch(() => {localStorage.removeItem('auth_token');localStorage.removeItem('user');});
     }
   }, [navigate]);
 

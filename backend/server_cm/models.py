@@ -1,15 +1,11 @@
 from django.db import models
 
-# ===========================
-# Справочники и основные сущности
-# ===========================
-
 class City(models.Model):
-    """города"""
-    name = models.CharField(max_length=100, verbose_name="Название города")
+    """Таблица: City"""
+    name = models.CharField(max_length=100, verbose_name="Название")
 
     class Meta:
-        db_table = 'cities'
+        db_table = 'City'
         verbose_name = 'Город'
         verbose_name_plural = 'Города'
 
@@ -17,34 +13,20 @@ class City(models.Model):
         return self.name
 
 
-class Employee(models.Model):
-    """работники"""
-    email = models.EmailField(unique=True, verbose_name="Email")
-    phone = models.CharField(max_length=20, blank=True, null=True, verbose_name="Телефон")
-    surname = models.CharField(max_length=50, verbose_name="Фамилия")
-    first_name = models.CharField(max_length=50, verbose_name="Имя")
-    password = models.CharField(max_length=255, verbose_name="Пароль")
-
-    class Meta:
-        db_table = 'employees'
-        verbose_name = 'Сотрудник'
-        verbose_name_plural = 'Сотрудники'
-
-    def __str__(self):
-        return f"{self.surname} {self.first_name}"
-
-
 class User(models.Model):
-    """пользователи"""
-    email = models.EmailField(unique=True, verbose_name="Email")
-    phone = models.CharField(max_length=20, blank=True, null=True, verbose_name="Телефон")
-    surname = models.CharField(max_length=50, verbose_name="Фамилия")
+    """Таблица: User"""
+    email = models.EmailField(max_length=100, verbose_name="Email")
+    phone = models.CharField(max_length=20, verbose_name="Телефон")
+    last_name = models.CharField(max_length=50, verbose_name="Фамилия")
     first_name = models.CharField(max_length=50, verbose_name="Имя")
-    password = models.CharField(max_length=255, verbose_name="Пароль")
-    address = models.TextField(blank=True, null=True, verbose_name="Адрес проживания")
+    password = models.CharField(max_length=100, verbose_name="Пароль")
+    city = models.CharField(max_length=50, blank=True, null=True, verbose_name="Город")
+    is_employee = models.BooleanField(default=False, verbose_name="Является работником (is_employeee)")
+    token = models.CharField(max_length=255, blank=True, null=True, verbose_name="Токен")
+    id_image = models.CharField(max_length=255, blank=True, null=True, verbose_name="Ссылка на изображение")
 
     class Meta:
-        db_table = 'users'
+        db_table = 'User'
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
 
@@ -53,73 +35,78 @@ class User(models.Model):
 
 
 class Product(models.Model):
-    """продукты (предложения банка)"""
-    name = models.CharField(max_length=150, verbose_name="Название продукта")
-    description = models.TextField(blank=True, null=True, verbose_name="Описание")
-    employee = models.ForeignKey(
-        Employee, on_delete=models.SET_NULL, null=True, blank=True,
-        db_column='employee_id', verbose_name="Ответственный сотрудник"
-    )
-    id_image = models.CharField(max_length=255, blank=True, null=True, verbose_name="Ссылка на изображение")
-    short_description = models.TextField(blank=True, null=True, verbose_name="Краткое описание")
-    city = models.ForeignKey(
-        City, on_delete=models.SET_NULL, null=True, blank=True,
-        db_column='address', verbose_name="Город (address)"
-    )
-    date = models.DateField(db_column='data', verbose_name="Дата создания/актуальности")
-    category = models.CharField(max_length=100, blank=True, null=True, verbose_name="Категория")
+    """Таблица: Product"""
+    name = models.CharField(max_length=100, verbose_name="Название")
+    description = models.TextField(verbose_name="Описание")
+    # Связь с работником (employeey_id)
+    id_image = models.CharField(max_length=255, blank=True, null=True, verbose_name="Ссылка на фото")
+    short_description = models.CharField(max_length=255, verbose_name="Краткое описание")
+    data = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания (data)")
+    category = models.CharField(max_length=50, blank=True, verbose_name="Категория")
 
     class Meta:
-        db_table = 'products'
-        verbose_name = 'Банковский продукт'
+        db_table = 'Product'
+        verbose_name = 'Продукт'
         verbose_name_plural = 'Продукты'
 
     def __str__(self):
         return self.name
 
 
-class ProductCity(models.Model):
-    """список городов (доступность продукта в городах)"""
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, db_column='id_product', verbose_name="Продукт")
-    city = models.ForeignKey(City, on_delete=models.CASCADE, db_column='id_city', verbose_name="Город")
+class Refferals(models.Model):
+    """Таблица: Refferals"""
+    # Связь с клиентом (client_id)
+    client = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        related_name='referrals', 
+        verbose_name="Клиент (client_id)"
+    )
+    # Связь с продуктом (product_id)
+    product = models.ForeignKey(
+        Product, 
+        on_delete=models.CASCADE, 
+        related_name='referrals', 
+        verbose_name="Продукт (product_id)"
+    )
+    referral_link = models.URLField(verbose_name="Ссылка на рефералку")
 
     class Meta:
-        db_table = 'product_cities'
-        unique_together = ('product', 'city')
-        verbose_name = 'Доступность в городе'
-        verbose_name_plural = 'Доступность продуктов'
+        db_table = 'Refferals'
+        verbose_name = 'Реферал'
+        verbose_name_plural = 'Рефералы'
 
     def __str__(self):
-        return f"{self.product.name} - {self.city.name}"
+        return f"Реферал от {self.client} для {self.product}"
 
 
-# ===========================
-# Реферальная система и заявки
-# ===========================
-
-class Referral(models.Model):
-    """рефералки"""
-    employee = models.ForeignKey(Employee, on_delete=models.CASCADE, db_column='employee_id', verbose_name="Сотрудник")
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, db_column='product_id', verbose_name="Продукт")
-    referral_url = models.URLField(blank=True, null=True, db_column='referral_url', verbose_name="Ссылка на рефералку")
+class CityList(models.Model):
+    """Таблица: CityList (Связь продукта с городами)"""
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, verbose_name="Продукт (id_product)")
+    city = models.ForeignKey(City, on_delete=models.CASCADE, verbose_name="Город (id_city)")
 
     class Meta:
-        db_table = 'referrals'
-        verbose_name = 'Реферальная ссылка'
-        verbose_name_plural = 'Рефералки'
+        db_table = 'CityList'
+        verbose_name = 'Доступность продукта в городе'
 
     def __str__(self):
-        return f"Рефералка {self.id}"
+        return f"{self.product} в городе {self.city}"
 
 
-class Request(models.Model):
-    """заявки"""
-    client = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, db_column='client_id', verbose_name="Клиент")
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, db_column='product_id', verbose_name="Продукт")
-    referral = models.ForeignKey(Referral, on_delete=models.SET_NULL, null=True, blank=True, db_column='ref_id', verbose_name="Реферальная ссылка")
+class Requests(models.Model):
+    """Таблица: Заявки"""
+    client = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Клиент (client_id)")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, verbose_name="Продукт (product_id)")
+    ref = models.ForeignKey(
+        Refferals, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        verbose_name="Реферал (ref_id)"
+    )
 
     class Meta:
-        db_table = 'requests'
+        db_table = 'Заявки'
         verbose_name = 'Заявка'
         verbose_name_plural = 'Заявки'
 
@@ -127,52 +114,21 @@ class Request(models.Model):
         return f"Заявка #{self.id}"
 
 
-# ===========================
-# Поддержка и аналитика
-# ===========================
-
-class TechSupport(models.Model):
-    """тех поддержка"""
-    client = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="Клиент")
-    employee = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, verbose_name="Сотрудник поддержки")
-
-    class Meta:
-        db_table = 'tech_support'
-        verbose_name = 'Тикет поддержки'
-        verbose_name_plural = 'Техподдержка'
-
-    def __str__(self):
-        return f"Тикет #{self.id}"
-
-
-class Chat(models.Model):
-    """чат"""
-    technical_specialist = models.ForeignKey(
-        Employee, on_delete=models.CASCADE, 
-        db_column='technical_specialist_id', verbose_name="Специалист поддержки"
+class Statistics(models.Model):
+    """Таблица: Statistics"""
+    ref = models.ForeignKey(
+        Refferals, 
+        on_delete=models.CASCADE, 
+        related_name='stats', 
+        verbose_name="Реферал (id_ref)"
     )
-    message = models.TextField(verbose_name="Сообщение")
-    number_message = models.IntegerField(verbose_name="Номер сообщения")
+    views_count = models.IntegerField(default=0, verbose_name="Просмотрено")
+    clicks_count = models.IntegerField(default=0, verbose_name="Переходов")
 
     class Meta:
-        db_table = 'chat'
-        verbose_name = 'Сообщение чата'
-        verbose_name_plural = 'Чат'
+        db_table = 'Statistics'
+        verbose_name = 'Статистика'
+        verbose_name_plural = 'Статистика'
 
     def __str__(self):
-        return f"Сообщение #{self.number_message}"
-
-
-class Dashboard(models.Model):
-    """деш-борд (статистика)"""
-    request = models.ForeignKey(Request, on_delete=models.CASCADE, db_column='id_ref', verbose_name="Заявка/Рефералка")
-    views_count = models.IntegerField(default=0, db_column='view_count', verbose_name="Количество просмотров")
-    clicks_count = models.IntegerField(default=0, db_column='click_count', verbose_name="Количество переходов")
-
-    class Meta:
-        db_table = 'dashboard'
-        verbose_name = 'Запись статистики'
-        verbose_name_plural = 'Дашборд'
-
-    def __str__(self):
-        return f"Статистика для #{self.request_id}"
+        return f"Статистика для {self.ref}"

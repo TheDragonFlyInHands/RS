@@ -7,9 +7,10 @@ import CatalogPage from './pages/CatalogPage';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
 import Footer from './components/Footer/Footer';
-import ChatButton from './components/ChatButton/ChatButton';
 import ProfilePage from './pages/ProfilePage';
 import PrivateRoute from './components/PrivateRoute';
+import AddProductPage from './pages/AddProductPage';
+import EmployeeRoute from './components/EmployeeRoute';
 
 function App() {
   return (
@@ -22,11 +23,12 @@ function App() {
             <Route path="/catalog" element={<CatalogPage />} />
             <Route path="/register" element={<RegisterPage />} /> 
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/product/:productId" element={<ProductPage />} />
             <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>}/>
+            <Route path="/products/new" element={<EmployeeRoute><AddProductPage /></EmployeeRoute>}/>
           </Routes>
         </main>
         <Footer/>
-        <ChatButton/>
       </div>
     </Router>
   );

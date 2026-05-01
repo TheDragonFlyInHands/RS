@@ -14,28 +14,82 @@
   box-shadow: $shadow-md;
   padding: 40px;
   width: 100%;
-  max-width: 800px;
+  max-width: 860px;
 }
 
 .profile-header {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 22px;
   margin-bottom: 30px;
   border-bottom: 2px solid $color-bg-gray;
-  padding-bottom: 20px;
+  padding-bottom: 22px;
 }
 
-.avatar-placeholder {
-  width: 80px;
-  height: 80px;
-  background-color: $color-bg-gray;
-  border-radius: 50%;
+.profile-header__content {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.profile-avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background-color: $color-bg-gray;
+  overflow: hidden;
+  flex-shrink: 0;
+  display: flex;
   align-items: center;
-  font-size: 40px;
+  justify-content: center;
+}
+
+.profile-avatar__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.profile-avatar__placeholder {
+  font-size: 42px;
   color: $color-text-gray;
+}
+
+.profile-avatar__controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.profile-avatar__button {
+  min-height: 42px;
+  padding: 0 18px;
+  border: 2px solid $color-black;
+  border-radius: $radius-sm;
+  background: transparent;
+  color: $color-black;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s;
+
+  &:hover {
+    background-color: $color-orange;
+    border-color: $color-orange;
+    color: $color-white;
+  }
+}
+
+.profile-avatar__filename {
+  font-size: 14px;
+  color: $color-text-gray;
+  word-break: break-word;
+}
+
+.profile-avatar__input {
+  display: none;
 }
 
 .profile-title {
@@ -53,7 +107,7 @@
 
 .form-section {
   display: grid;
-  grid-template-columns: 1fr 1fr; // 2 колонки для полей
+  grid-template-columns: 1fr 1fr;
   gap: 20px;
 }
 
@@ -82,6 +136,10 @@
   }
 }
 
+.readonly-input {
+  background: $color-bg-gray;
+}
+
 .password-section {
   margin-top: 10px;
   padding-top: 20px;
@@ -97,7 +155,7 @@
 
 .profile-actions {
   display: flex;
-  justify-content: flex-end; // Кнопки справа
+  justify-content: flex-end;
   gap: 15px;
   margin-top: 20px;
 }
@@ -112,7 +170,9 @@
   cursor: pointer;
   transition: 0.3s;
 
-  &:hover { background-color: $color-green; }
+  &:hover {
+    background-color: $color-green;
+  }
 }
 
 .btn-cancel {
@@ -134,7 +194,7 @@
 .btn-logout {
   padding: 12px 20px;
   background: transparent;
-  color: #dc3545; // Красный для выхода
+  color: #dc3545;
   border: 2px solid #dc3545;
   border-radius: $radius-sm;
   font-weight: 600;
@@ -147,12 +207,26 @@
   }
 }
 
-// Адаптивность
 @media (max-width: 600px) {
-  .form-section {
-    grid-template-columns: 1fr; // Одна колонка на телефоне
+  .profile-container {
+    padding: 24px 20px;
   }
-  
+
+  .profile-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .profile-avatar__controls {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .form-section {
+    grid-template-columns: 1fr;
+  }
+
   .password-section h3 {
     grid-column: span 1;
   }
@@ -160,8 +234,11 @@
   .profile-actions {
     flex-direction: column-reverse;
   }
-  
-  .btn-save, .btn-cancel, .btn-logout {
+
+  .btn-save,
+  .btn-cancel,
+  .btn-logout,
+  .profile-avatar__button {
     width: 100%;
   }
 }

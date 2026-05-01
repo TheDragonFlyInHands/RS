@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import './ProductCard.scss';
 
 const ProductCard = ({ id }) => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Запрос данных при монтировании компонента
   useEffect(() => {
     fetch(`http://localhost:8000/server_cm/product/${id}/`)
       .then((response) => response.json())
@@ -19,25 +19,32 @@ const ProductCard = ({ id }) => {
       });
   }, [id]);
 
-  if (loading) return <div className="card card--loading">Загрузка...</div>;
-  if (!product) return <div className="card card--error">Ошибка загрузки</div>;
+  if (loading) {
+    return <div className="card card--loading">Загрузка...</div>;
+  }
+
+  if (!product) {
+    return <div className="card card--error">Ошибка загрузки</div>;
+  }
+
+  const productImage = product.image;
 
   return (
     <div className="product-card">
       <div className="product-card__image">
-        {product.image ? (
-          <img src={product.image} alt={product.name} />
+        {productImage ? (
+          <img src={productImage} alt={product.name} />
         ) : (
           <span>Нет фото</span>
         )}
       </div>
-      
+
       <div className="product-card__content">
         <h3 className="product-card__title">{product.name}</h3>
-        <p className="product-card__description">
-          {product.short_description}
-        </p>
-        <button className="product-card__button">К предложению</button>
+        <p className="product-card__description">{product.short_description}</p>
+        <Link to={`/product/${id}`} className="product-card__button">
+          К предложению
+        </Link>
       </div>
     </div>
   );

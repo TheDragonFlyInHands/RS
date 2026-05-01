@@ -6,7 +6,8 @@ const Controls = ({
   searchValue, onSearchChange, 
   sortValue, onSortChange, 
   categoryValue, onCategoryChange, 
-  cityValue, onCityChange 
+  cityValue, onCityChange,
+  cities
 }) => {
   return (
     <div className="controls">
@@ -24,8 +25,9 @@ const Controls = ({
         </select>
         
         <select value={cityValue} onChange={onCityChange} className="filter-select">
+          <option value="all">🏙️ Все города</option>
           {cities.map(city => (
-            <option key={city.value} value={city.value}>{city.label}</option>
+            <option key={city.name} value={city.id}>{city.name}</option>
           ))}
         </select>
       </div>
