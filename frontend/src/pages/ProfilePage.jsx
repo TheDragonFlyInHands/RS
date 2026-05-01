@@ -132,14 +132,27 @@ const ProfilePage = () => {
     }
   };
 
-  const handleLogout = () => {
-    if (window.confirm('Выйти из аккаунта?')) {
+const handleLogout = async () => {
+  if (window.confirm('Выйти из аккаунта?')) {
+    const token = localStorage.getItem('auth_token');
+    
+    try {
+      // 1. Сообщаем серверу, что мы выходим (чтобы он удалил токен из БД)
+      await fetch('http://localhost:8000/server_cm/auth/logout/', {
+        method: 'POST',
+        headers: { 'Authorization': `Token ${token}` }
+      });
+    } catch (error) {
+      console.error('Ошибка при выходе:', error);
+    } finally {
+      // 2. Очищаем локальное хранилище в любом случае
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
-      window.dispatchEvent(new Event('authchange'));
+      window.dispatchEvent(new Event('authchange')); // Обновить Header
       navigate('/');
     }
-  };
+  }
+};
 
   const renderedAvatar = avatarPreview || userData.avatar_url || '';
 

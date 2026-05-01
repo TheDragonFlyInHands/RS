@@ -9,12 +9,10 @@ urlpatterns = [
     path('products/popular/', views.get_popular_products, name='popular_products'),
 
     path('auth/login/', views.login_view, name='login'),
-    path('auth/reset-password/', views.reset_password_view, name='reset_password'),
     path('auth/validate/', views.validate_token_view, name='validate_token'),
-
     path('auth/update-profile/', views.update_profile, name='update_profile'),
-
     path('auth/check-employee/', views.check_is_employee, name='check_employee'),
+    path('auth/logout/', views.logout_view, name='logout'),
 
     path('cities/', views.get_cities, name='get_cities'),
     path('cities/', views.get_all_cities, name='get_all_cities'),          
@@ -25,6 +23,7 @@ urlpatterns = [
     path('dashboard/track/view/', views.track_view, name='track_view'),
     path('dashboard/track/click/', views.track_click, name='track_click'),
     path('dashboard/search-products/', views.search_products_for_referral, name='search_products'),
+    path('dashboard/delete-referral/', views.delete_referral_link, name='delete_referral'),
 
 ]
 

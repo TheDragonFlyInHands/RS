@@ -93,8 +93,6 @@ const Header = () => {
               )}
               
               {isAuth && <Link to="/profile" onClick={closeMenu}>Личный кабинет</Link>}
-              <Link to="/about" onClick={closeMenu}>О нас</Link>
-              <Link to="/contacts" onClick={closeMenu}>Контакты</Link>
               
               {!isAuth && (
                 <>

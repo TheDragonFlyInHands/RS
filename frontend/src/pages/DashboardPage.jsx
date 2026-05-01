@@ -35,10 +35,28 @@ const DashboardPage = () => {
   }, []);
 
   const handleDelete = async (id) => {
-    if (window.confirm('Удалить эту реферальную ссылку?')) {
-      // Логика удаления (нужно добавить эндпоинт delete на бэкенде если нужно)
-      // Пока просто обновляем список локально или перезагружаем
-      fetchData();
+    if (window.confirm('Удалить эту реферальную ссылку? Вся статистика также будет удалена.')) {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const res = await fetch('http://localhost:8000/server_cm/dashboard/delete-referral/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Token ${token}`
+          },
+          body: JSON.stringify({ referral_id: id })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          fetchData(); // Обновляем таблицу и статистику
+        } else {
+          alert(data.error || 'Ошибка при удалении');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Не удалось подключиться к серверу');
+      }
     }
   };
 
