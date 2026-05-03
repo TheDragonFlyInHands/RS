@@ -1,6 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ProfilePage.scss';
+import { apiGet, apiPost } from '../api/client';
+import { clearAuthToken } from '../api/cookies';
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -22,15 +24,19 @@ const ProfilePage = () => {
   const [avatarPreview, setAvatarPreview] = useState(userData.avatar_url || '');
   const [avatarLabel, setAvatarLabel] = useState('');
 
-  // 🔹 Состояние для списка городов
   const [cities, setCities] = useState([]);
 
-  // 🔹 Загрузка городов при монтировании компонента
   useEffect(() => {
-    fetch('http://localhost:8000/server_cm/cities/')
-      .then(res => res.json())
-      .then(data => setCities(data))
-      .catch(err => console.error('Ошибка загрузки городов:', err));
+    const run = async () => {
+      try {
+        const data = await apiGet('/cities/', { cache: true, cacheTtlMs: 60 * 60 * 1000 });
+        setCities(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Ошибка загрузки городов:', err);
+      }
+    };
+
+    run();
   }, []);
 
   const resetAvatarPreview = () => {
@@ -54,11 +60,13 @@ const ProfilePage = () => {
   const handleAvatarChange = (event) => {
     const [file] = event.target.files || [];
     if (!file) return;
+
     if (file.size > 5 * 1024 * 1024) {
       alert('Файл слишком большой. Выберите изображение до 5 МБ.');
       event.target.value = '';
       return;
     }
+
     resetAvatarPreview();
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
@@ -68,19 +76,23 @@ const ProfilePage = () => {
 
   const handleSave = async (event) => {
     event.preventDefault();
-    if (passwordData.newPassword && passwordData.newPassword !== passwordData.confirmPassword) {
+
+    if (
+      passwordData.newPassword &&
+      passwordData.newPassword !== passwordData.confirmPassword
+    ) {
       alert('Пароли не совпадают!');
       return;
     }
+
     setLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
       const payload = new FormData();
 
       payload.append('first_name', userData.first_name || '');
       payload.append('last_name', userData.last_name || '');
       payload.append('phone', userData.phone || '');
-      payload.append('city', userData.city || ''); // Отправляем выбранное название города
+      payload.append('city', userData.city || '');
 
       if (passwordData.newPassword) {
         payload.append('newPassword', passwordData.newPassword);
@@ -90,14 +102,9 @@ const ProfilePage = () => {
         payload.append('avatar', avatarFile);
       }
 
-      const response = await fetch('http://localhost:8000/server_cm/auth/update-profile/', {
-        method: 'POST',
-        headers: { 'Authorization': `Token ${token}` },
-        body: payload,
-      });
+      const result = await apiPost('/auth/update-profile/', payload);
 
-      const result = await response.json();
-      if (response.ok) {
+      if (result?.user) {
         alert('✅ Данные успешно сохранены!');
         localStorage.setItem('user', JSON.stringify(result.user));
         setUserData(result.user);
@@ -109,7 +116,7 @@ const ProfilePage = () => {
         setAvatarLabel('');
         window.dispatchEvent(new Event('authchange'));
       } else {
-        alert(`❌ ${result.error || 'Ошибка сохранения'}`);
+        alert(`❌ ${result?.error || 'Ошибка сохранения'}`);
       }
     } catch (error) {
       console.error('Ошибка сети:', error);
@@ -132,7 +139,7 @@ const ProfilePage = () => {
 
   const handleLogout = () => {
     if (window.confirm('Выйти из аккаунта?')) {
-      localStorage.removeItem('auth_token');
+      clearAuthToken();
       localStorage.removeItem('user');
       window.dispatchEvent(new Event('authchange'));
       navigate('/');
@@ -147,7 +154,11 @@ const ProfilePage = () => {
         <div className="profile-header">
           <div className="profile-avatar">
             {renderedAvatar ? (
-              <img src={renderedAvatar} alt="Фото профиля" className="profile-avatar__image" />
+              <img
+                src={renderedAvatar}
+                alt="Фото профиля"
+                className="profile-avatar__image"
+              />
             ) : (
               <span className="profile-avatar__placeholder">👤</span>
             )}
@@ -155,12 +166,23 @@ const ProfilePage = () => {
           <div className="profile-header__content">
             <h2 className="profile-title">Личный кабинет</h2>
             <div className="profile-avatar__controls">
-              <button type="button" className="profile-avatar__button" onClick={handleChooseAvatar} disabled={loading}>
+              <button
+                type="button"
+                className="profile-avatar__button"
+                onClick={handleChooseAvatar}
+                disabled={loading}
+              >
                 Прикрепить фотографию
               </button>
               {avatarLabel && <span className="profile-avatar__filename">{avatarLabel}</span>}
             </div>
-            <input ref={fileInputRef} type="file" accept="image/*" className="profile-avatar__input" onChange={handleAvatarChange} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="profile-avatar__input"
+              onChange={handleAvatarChange}
+            />
           </div>
         </div>
 
@@ -168,28 +190,51 @@ const ProfilePage = () => {
           <div className="form-section">
             <div className="form-group">
               <label>Имя</label>
-              <input type="text" name="first_name" value={userData.first_name || ''} onChange={handleUserChange} />
+              <input
+                type="text"
+                name="first_name"
+                value={userData.first_name || ''}
+                onChange={handleUserChange}
+              />
             </div>
             <div className="form-group">
               <label>Фамилия</label>
-              <input type="text" name="last_name" value={userData.last_name || ''} onChange={handleUserChange} />
+              <input
+                type="text"
+                name="last_name"
+                value={userData.last_name || ''}
+                onChange={handleUserChange}
+              />
             </div>
             <div className="form-group">
               <label>Номер телефона</label>
-              <input type="tel" name="phone" value={userData.phone || ''} readOnly className="readonly-input" />
+              <input
+                type="tel"
+                name="phone"
+                value={userData.phone || ''}
+                readOnly
+                className="readonly-input"
+              />
             </div>
             <div className="form-group">
               <label>Почта</label>
-              <input type="email" name="email" value={userData.email || ''} readOnly className="readonly-input" />
+              <input
+                type="email"
+                name="email"
+                value={userData.email || ''}
+                readOnly
+                className="readonly-input"
+              />
             </div>
-            
-            {/* 🔹 Выпадающий список городов вместо текстового поля */}
+
             <div className="form-group">
               <label>Город</label>
               <select name="city" value={userData.city || ''} onChange={handleUserChange}>
                 <option value="">Выберите город</option>
-                {cities.map(city => (
-                  <option key={city.id} value={city.name}>{city.name}</option>
+                {cities.map((city) => (
+                  <option key={city.id} value={city.name}>
+                    {city.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -199,18 +244,36 @@ const ProfilePage = () => {
             <h3>Смена пароля</h3>
             <div className="form-group">
               <label>Новый пароль</label>
-              <input type="password" name="newPassword" value={passwordData.newPassword} onChange={handlePasswordChange} placeholder="Оставьте пустым, если не меняете" />
+              <input
+                type="password"
+                name="newPassword"
+                value={passwordData.newPassword}
+                onChange={handlePasswordChange}
+                placeholder="Оставьте пустым, если не меняете"
+              />
             </div>
             <div className="form-group">
               <label>Подтвердите новый пароль</label>
-              <input type="password" name="confirmPassword" value={passwordData.confirmPassword} onChange={handlePasswordChange} placeholder="Повторите пароль" />
+              <input
+                type="password"
+                name="confirmPassword"
+                value={passwordData.confirmPassword}
+                onChange={handlePasswordChange}
+                placeholder="Повторите пароль"
+              />
             </div>
           </div>
 
           <div className="profile-actions">
-            <button type="button" className="btn-cancel" onClick={handleCancel} disabled={loading}>Отмена</button>
-            <button type="submit" className="btn-save" disabled={loading}>{loading ? 'Сохранение...' : 'Сохранить'}</button>
-            <button type="button" className="btn-logout" onClick={handleLogout} disabled={loading}>Выйти</button>
+            <button type="button" className="btn-cancel" onClick={handleCancel} disabled={loading}>
+              Отмена
+            </button>
+            <button type="submit" className="btn-save" disabled={loading}>
+              {loading ? 'Сохранение...' : 'Сохранить'}
+            </button>
+            <button type="button" className="btn-logout" onClick={handleLogout} disabled={loading}>
+              Выйти
+            </button>
           </div>
         </form>
       </div>

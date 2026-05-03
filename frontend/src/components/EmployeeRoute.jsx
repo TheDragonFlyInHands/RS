@@ -1,23 +1,29 @@
 import { Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { apiGet } from '../api/client';
 
 const EmployeeRoute = ({ children }) => {
   const [isEmployee, setIsEmployee] = useState(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (!token) {
-      setIsEmployee(false);
-      return;
-    }
+    let mounted = true;
 
-    // Запрашиваем актуальный статус с сервера
-    fetch('http://localhost:8000/server_cm/auth/check-employee/', {
-      headers: { 'Authorization': `Token ${token}` }
-    })
-      .then((res) => res.json())
-      .then((data) => setIsEmployee(data.is_employee))
-      .catch(() => setIsEmployee(false));
+    const run = async () => {
+      try {
+        const data = await apiGet('/auth/check-employee/', { cache: false });
+        if (!mounted) return;
+        setIsEmployee(Boolean(data?.is_employee));
+      } catch {
+        if (!mounted) return;
+        setIsEmployee(false);
+      }
+    };
+
+    run();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   if (isEmployee === null) return <div className="loading">Проверка прав доступа...</div>;

@@ -10,7 +10,7 @@ const getCacheKey = ({ url, params }) => {
   return `${url}?${paramsPart}`;
 };
 
-const getCache = new Map(); // key -> { expiresAt, data }
+const getCache = new Map();
 
 function getCachedData(key) {
   const entry = getCache.get(key);

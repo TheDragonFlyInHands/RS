@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.scss';
 import Header from './components/Header/Header';
@@ -13,8 +13,12 @@ import AddProductPage from './pages/AddProductPage';
 import EmployeeRoute from './components/EmployeeRoute';
 import ProductPage from './pages/ProductPage';
 import DashboardPage from './pages/DashboardPage';
+import CookieConsent from './components/CookieConsent/CookieConsent';
 
 function App() {
+  const [showCookieConsent, setShowCookieConsent] = useState(() => {
+    return !localStorage.getItem('cookies_accepted');
+  });
   return (
     <Router>
       <div className="app">
@@ -32,6 +36,14 @@ function App() {
           </Routes>
         </main>
         <Footer/>
+        {showCookieConsent && (
+          <CookieConsent
+            onAccept={() => {
+              localStorage.setItem('cookies_accepted', 'true');
+              setShowCookieConsent(false);
+            }}
+          />
+        )}
       </div>
     </Router>
   );

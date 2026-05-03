@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AddReferralModal from '../components/AddReferralModal/AddReferralModal';
 import './DashboardPage.scss';
+import { apiGet, apiPost } from '../api/client';
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -12,21 +13,11 @@ const DashboardPage = () => {
 
   const fetchData = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      const res = await fetch('http://localhost:8000/server_cm/dashboard/stats/', {
-        method: 'GET',
-        headers: token ? { Authorization: `Token ${token}` } : {},
-      });
-      const data = await res.json();
-
-      if (res.ok) {
-        setStats(data.stats);
-        setReferrals(data.referrals);
-      } else {
-        navigate('/'); // Если не авторизован или не сотрудник
-      }
+      const data = await apiGet('/dashboard/stats/', { cache: false, cacheTtlMs: 0 });
+      setStats(data?.stats ?? { total_views: 0, total_clicks: 0, total_products: 0 });
+      setReferrals(Array.isArray(data?.referrals) ? data.referrals : []);
     } catch (err) {
-      console.error(err);
+      navigate('/'); // Если не авторизован или не сотрудник
     } finally {
       setLoading(false);
     }
@@ -34,31 +25,18 @@ const DashboardPage = () => {
 
   useEffect(() => {
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleDelete = async (id) => {
-    if (window.confirm('Удалить эту реферальную ссылку? Вся статистика также будет удалена.')) {
-      try {
-        const token = localStorage.getItem('auth_token');
-        const res = await fetch('http://localhost:8000/server_cm/dashboard/delete-referral/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Token ${token}`
-          },
-          body: JSON.stringify({ referral_id: id })
-        });
+    if (!window.confirm('Удалить эту реферальную ссылку? Вся статистика также будет удалена.')) return;
 
-        const data = await res.json();
-        if (res.ok) {
-          fetchData(); // Обновляем таблицу и статистику
-        } else {
-          alert(data.error || 'Ошибка при удалении');
-        }
-      } catch (err) {
-        console.error(err);
-        alert('Не удалось подключиться к серверу');
-      }
+    try {
+      await apiPost('/dashboard/delete-referral/', { referral_id: id });
+      fetchData(); // Обновляем таблицу и статистику
+    } catch (err) {
+      const msg = err?.response?.data?.error || 'Ошибка при удалении';
+      alert(msg);
     }
   };
 
@@ -73,7 +51,6 @@ const DashboardPage = () => {
         </button>
       </header>
 
-      {/* Карточки статистики */}
       <div className="stats-grid">
         <div className="stat-card">
           <div className="stat-icon">👁️</div>
@@ -98,7 +75,6 @@ const DashboardPage = () => {
         </div>
       </div>
 
-      {/* Таблица ссылок */}
       <div className="referrals-table-wrapper">
         <h2>Ваши реферальные ссылки</h2>
         {referrals.length === 0 ? (
@@ -119,12 +95,16 @@ const DashboardPage = () => {
                 <tr key={ref.id}>
                   <td>{ref.product_name}</td>
                   <td className="link-cell">
-                    <a href={ref.link} target="_blank" rel="noreferrer">{ref.link}</a>
+                    <a href={ref.link} target="_blank" rel="noreferrer">
+                      {ref.link}
+                    </a>
                   </td>
                   <td>{ref.views}</td>
                   <td>{ref.clicks}</td>
                   <td>
-                    <button className="btn-danger" onClick={() => handleDelete(ref.id)}>Удалить</button>
+                    <button className="btn-danger" onClick={() => handleDelete(ref.id)}>
+                      Удалить
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -133,14 +113,13 @@ const DashboardPage = () => {
         )}
       </div>
 
-      {/* Модальное окно добавления */}
       {isModalOpen && (
-        <AddReferralModal 
-          onClose={() => setIsModalOpen(false)} 
+        <AddReferralModal
+          onClose={() => setIsModalOpen(false)}
           onSuccess={() => {
             setIsModalOpen(false);
-            fetchData(); // Обновить данные после добавления
-          }} 
+            fetchData();
+          }}
         />
       )}
     </div>

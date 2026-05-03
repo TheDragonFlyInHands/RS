@@ -1,0 +1,137 @@
+@use '../../variables' as *;
+.cookie-consent {
+  position: fixed;
+  bottom: 20px;        // Отступ снизу
+  right: 20px;         // 🔹 Отступ справа (вместо left: 0 и right: 0)
+  z-index: 1000;
+  animation: slideUp 0.3s ease-out;
+  
+  // Убираем width: 100% и padding, так как теперь позиционируем конкретно
+  width: auto;
+  max-width: 400px;    // Ограничиваем ширину
+
+  .cookie-consent__content {
+    --shadow: rgba(60, 64, 67, 0.3) 0 1px 2px 0,
+      rgba(60, 64, 67, 0.15) 0 2px 6px 2px;
+    
+    background-color: $color-white;
+    border-radius: 10px;
+    box-shadow: $shadow-lg;
+    padding: 2rem 1.5rem;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 1rem;
+    
+  }
+
+  .cookie-consent__icon {
+    position: relative;
+    margin: -3rem auto 0.5rem;
+    display: flex;
+    justify-content: center;
+
+    svg {
+      max-width: 100%;
+      height: auto;
+    }
+  }
+
+  .cookie-consent__title {
+    font-size: 1rem;
+    font-weight: 600;
+    text-align: center; 
+    color: $color-black;
+    line-height: 1.4;
+  }
+
+  .cookie-consent__description {
+    width: 100%;
+    font-size: 0.875rem;
+    text-align: center; /* 🔹 Центрируем описание */
+    color: $color-text-gray;
+    line-height: 1.5;
+
+    .cookie-consent__privacy-link {
+      display: block; /* 🔹 Ссылка на отдельной строке */
+      margin-top: 0.5rem; /* 🔹 Отступ сверху */
+      font-weight: 600;
+      color: $color-orange;
+      text-decoration: none;
+
+
+      &:hover {
+        color: $color-orange-hover;
+        text-decoration: underline;
+      }
+    }
+  }
+
+  .cookie-consent__more-options {
+    font-size: 0.875rem;
+    color: $color-text-gray;
+    cursor: pointer;
+    font-weight: 600;
+    background: transparent;
+    border: none;
+    text-align: center;
+
+    &:hover {
+      color: $color-orange-hover;
+      text-decoration: underline;
+    }
+  }
+
+  .cookie-consent__accept {
+    width: 100%; 
+    max-width: 200px; 
+    padding: 0.75rem 2rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: $color-white;
+    background-color: $color-orange;
+    border: none;
+    border-radius: $radius-sm;
+    cursor: pointer;
+
+    &:hover {
+      background-color: $color-orange-hover;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba($color-orange, 0.25);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+}
+
+// 🎬 Анимация появления
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// 📱 Адаптивность
+@media (max-width: 480px) {
+  .cookie-consent {
+    padding: 0.75rem;
+  }
+
+  .cookie-consent__content {
+    max-width: 100%;
+    padding: 1.5rem 1.25rem;
+  }
+
+  .cookie-consent__accept {
+    max-width: 100%; /* 🔹 На мобильных кнопка на всю ширину */
+  }
+}

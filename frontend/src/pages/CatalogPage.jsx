@@ -3,6 +3,7 @@ import Controls from '../components/Controls/Controls';
 import ProductCard from '../components/ProductCard/ProductCard';
 import Pagination from '../components/Pagination/Pagination';
 import './CatalogPage.scss';
+import { apiGet } from '../api/client';
 
 const ITEMS_PER_PAGE = 8;
 
@@ -12,48 +13,45 @@ const CatalogPage = () => {
   const [categoryValue, setCategoryValue] = useState('all');
   const [cityValue, setCityValue] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  
-  // Состояние для списка ID продуктов
+
   const [productIds, setProductIds] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 🔹 Новое состояние для списка городов
   const [cities, setCities] = useState([]);
 
-  // 🔹 Запрос списка городов при монтировании компонента
   useEffect(() => {
-    const fetchCities = async () => {
+    const run = async () => {
       try {
-        // Запрос к эндпоинту, который мы создавали ранее
-        const response = await fetch('http://localhost:8000/server_cm/cities/');
-        if (response.ok) {
-          const data = await response.json();
-          setCities(data);
-        }
+        const data = await apiGet('/cities/', { cache: true, cacheTtlMs: 60 * 60 * 1000 });
+        setCities(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Ошибка загрузки городов:', error);
       }
     };
 
-    fetchCities();
+    run();
   }, []);
 
-  // Функция запроса к серверу (получаем список ID продуктов)
   const fetchProductIds = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
+      const params = {
         category: categoryValue,
-        city_id: cityValue, // Отправляем ID выбранного города
+        city_id: cityValue,
         search: searchValue,
-        sort: sortValue
+        sort: sortValue,
+      };
+
+      const data = await apiGet('/products/filter/', {
+        cache: false,
+        cacheTtlMs: 0,
+        params,
       });
 
-      const response = await fetch(`http://localhost:8000/server_cm/products/filter/?${params}`);
-      const data = await response.json();
-
-      if (data.ids) {
+      if (data?.ids) {
         setProductIds(data.ids);
+      } else {
+        setProductIds([]);
       }
     } catch (error) {
       console.error('Ошибка загрузки продуктов:', error);
@@ -62,13 +60,12 @@ const CatalogPage = () => {
     }
   };
 
-  // Запускаем запрос продуктов при изменении фильтров
   useEffect(() => {
-    setCurrentPage(1); // Сбрасываем на 1 страницу при новом поиске
+    setCurrentPage(1);
     fetchProductIds();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchValue, sortValue, categoryValue, cityValue]);
 
-  // Логика пагинации
   const totalPages = Math.ceil(productIds.length / ITEMS_PER_PAGE) || 1;
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
@@ -80,7 +77,7 @@ const CatalogPage = () => {
 
   return (
     <div className="catalog-page">
-      <Controls 
+      <Controls
         searchValue={searchValue}
         onSearchChange={(e) => setSearchValue(e.target.value)}
         sortValue={sortValue}
@@ -89,29 +86,22 @@ const CatalogPage = () => {
         onCategoryChange={handleFilterChange(setCategoryValue)}
         cityValue={cityValue}
         onCityChange={handleFilterChange(setCityValue)}
-        cities={cities} // 🔹 Передаем загруженные города в компонент Controls
+        cities={cities}
       />
 
-      {/* Индикатор загрузки */}
       {loading && <div className="loading-spinner">Загрузка предложений...</div>}
 
       {!loading && (
         <>
           <div className="products-grid">
             {paginatedIds.length > 0 ? (
-              paginatedIds.map(id => (
-                <ProductCard key={id} id={id} />
-              ))
+              paginatedIds.map((id) => <ProductCard key={id} id={id} />)
             ) : (
               <div className="no-results">По вашему запросу ничего не найдено 😕</div>
             )}
           </div>
 
-          <Pagination 
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
+          <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
         </>
       )}
     </div>
