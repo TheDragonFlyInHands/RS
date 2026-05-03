@@ -1,39 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './LoginPage.scss';
+import { apiGet, apiPost } from '../api/client';
+import { clearAuthToken, setAuthToken } from '../api/cookies';
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const [isResetMode, setIsResetMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    identifier: '', 
+    identifier: '',
     password: '',
-    resetEmail: ''
+    resetEmail: '',
   });
 
   // 🔹 Проверка токена при загрузке (если уже авторизован)
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      // Можно отправить запрос на сервер для валидации токена
-      fetch('http://localhost:8000/server_cm/auth/validate/', {
-        headers: { 'Authorization': `Token ${token}` }
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.valid) {
+    const validateToken = async () => {
+      try {
+        const data = await apiGet('/auth/validate/');
+        if (data?.valid) {
           localStorage.setItem('user', JSON.stringify(data.user));
           window.dispatchEvent(new Event('authchange'));
-          navigate('/profile'); // Если токен валиден — сразу в кабинет
+          navigate('/profile');
+          return;
         }
-        else{
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('user');
-        }
-      })
-      .catch(() => {localStorage.removeItem('auth_token');localStorage.removeItem('user');});
-    }
+        clearAuthToken();
+        localStorage.removeItem('user');
+      } catch {
+        clearAuthToken();
+        localStorage.removeItem('user');
+      }
+    };
+
+    validateToken();
   }, [navigate]);
 
   const handleChange = (e) => {
@@ -49,66 +49,52 @@ const LoginPage = () => {
 
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8000/server_cm/auth/login/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          identifier: formData.identifier,
-          password: formData.password
-        })
+      const data = await apiPost('/auth/login/', {
+        identifier: formData.identifier,
+        password: formData.password,
       });
 
-      const data = await response.json();
-
-      if (response.ok && data.token) {
-        localStorage.setItem('auth_token', data.token);
+      if (data?.token) {
+        setAuthToken(data.token);
         localStorage.setItem('user', JSON.stringify(data));
         window.dispatchEvent(new Event('authchange'));
         navigate('/profile');
       } else {
-        alert(data.error || 'Неверный логин или пароль');
+        alert(data?.error || 'Неверный логин или пароль');
       }
     } catch (error) {
-      alert('Ошибка подключения к серверу');
+      alert(error?.response?.data?.error || 'Ошибка подключения к серверу');
     } finally {
       setLoading(false);
     }
   };
 
-const handleResetPassword = async (e) => {
-  e.preventDefault();
-  if (!formData.resetEmail.trim()) {
-    return alert('Введите почту');
-  }
-  
-  setLoading(true);
-  try {
-    const response = await fetch('http://localhost:8000/server_cm/auth/reset-password/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: formData.resetEmail.trim().toLowerCase() })
-    });
-    
-    const data = await response.json();
-    
-    if (response.ok) {
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    if (!formData.resetEmail.trim()) {
+      return alert('Введите почту');
+    }
+
+    setLoading(true);
+    try {
+      const data = await apiPost('/auth/reset-password/', {
+        email: formData.resetEmail.trim().toLowerCase(),
+      });
+
       alert('✅ Новый пароль отправлен на вашу почту. Проверьте папку "Входящие" и "Спам".');
       setIsResetMode(false);
       setFormData({ identifier: '', password: '', resetEmail: '' });
-    } else {
-      alert(data.error || 'Ошибка при сбросе пароля');
+    } catch (error) {
+      const msg = error?.response?.data?.error || 'Ошибка при сбросе пароля';
+      alert(msg);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error(error);
-    alert('Не удалось подключиться к серверу');
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   // 🔹 Выход из аккаунта
   const handleLogout = () => {
-    localStorage.removeItem('auth_token');
+    clearAuthToken();
     localStorage.removeItem('user');
     navigate('/');
   };
@@ -127,9 +113,7 @@ const handleResetPassword = async (e) => {
         {isResetMode ? (
           <div className="reset-step">
             <h2 className="login-title">Восстановление пароля</h2>
-            <p className="reset-text">
-              Введите вашу почту, мы сгенерируем новый пароль
-            </p>
+            <p className="reset-text">Введите вашу почту, мы сгенерируем новый пароль</p>
             <form onSubmit={handleSubmit} className="login-form">
               <input
                 type="email"
@@ -146,9 +130,9 @@ const handleResetPassword = async (e) => {
               </button>
             </form>
             <div className="reset-footer">
-              <button 
-                type="button" 
-                className="btn-back" 
+              <button
+                type="button"
+                className="btn-back"
                 onClick={() => setIsResetMode(false)}
                 disabled={loading}
               >
@@ -157,7 +141,6 @@ const handleResetPassword = async (e) => {
             </div>
           </div>
         ) : (
-
           <>
             <h2 className="login-title">Вход в аккаунт</h2>
             <form onSubmit={handleSubmit} className="login-form">
@@ -187,11 +170,13 @@ const handleResetPassword = async (e) => {
             </form>
 
             <div className="login-actions">
-              <Link to="/register" className="btn-link">Регистрация</Link>
+              <Link to="/register" className="btn-link">
+                Регистрация
+              </Link>
               <span className="divider">|</span>
-              <button 
-                type="button" 
-                className="btn-link" 
+              <button
+                type="button"
+                className="btn-link"
                 onClick={() => setIsResetMode(true)}
                 disabled={loading}
               >

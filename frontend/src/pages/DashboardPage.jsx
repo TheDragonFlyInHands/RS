@@ -12,10 +12,13 @@ const DashboardPage = () => {
 
   const fetchData = async () => {
     try {
+      const token = localStorage.getItem('auth_token');
       const res = await fetch('http://localhost:8000/server_cm/dashboard/stats/', {
-        credentials: 'include'
+        method: 'GET',
+        headers: token ? { Authorization: `Token ${token}` } : {},
       });
       const data = await res.json();
+
       if (res.ok) {
         setStats(data.stats);
         setReferrals(data.referrals);

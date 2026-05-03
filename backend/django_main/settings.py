@@ -27,7 +27,7 @@ SECRET_KEY = 'django-insecure-%l%zo$5w_1wy&l=jz32+d#x0ysmu&182vih(vo2g^y6bv#+3cl
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0']
 
 
 # Application definition
@@ -81,9 +81,9 @@ WSGI_APPLICATION = 'django_main.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'myproject',
-        'USER': 'rsdev',
-        'PASSWORD': '1234',
+        'NAME': 'postgres',
+        'USER': 'postgres',
+        'PASSWORD': 'YouStupiD2002',
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -127,12 +127,10 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
+CORS_ALLOW_ALL_ORIGINS = True
 
-CORS_ALLOW_CREDENTIALS = True
+# Токен передаётся через заголовок Authorization, cookies не используются
+CORS_ALLOW_CREDENTIALS = False
 
 CACHES = {
     "default": {
@@ -159,4 +157,4 @@ EMAIL_PORT = 465
 EMAIL_USE_SSL = True       
 
 EMAIL_HOST_USER = 'rs-dev@mail.ru'
-EMAIL_HOST_PASSWORD = 'owYdePImkQSbWnwqnkXo' 
+EMAIL_HOST_PASSWORD = 'owYdePImkQSbWnwqnkXo'
