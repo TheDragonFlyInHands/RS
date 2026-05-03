@@ -13,8 +13,8 @@ urlpatterns = [
     path('auth/update-profile/', views.update_profile, name='update_profile'),
     path('auth/check-employee/', views.check_is_employee, name='check_employee'),
     path('auth/logout/', views.logout_view, name='logout'),
+    path('auth/reset-password/', views.reset_password_view, name='reset_password'),
 
-    path('cities/', views.get_cities, name='get_cities'),
     path('cities/', views.get_all_cities, name='get_all_cities'),          
     path('products/new/', views.create_product, name='create_product'),
 
@@ -24,6 +24,9 @@ urlpatterns = [
     path('dashboard/track/click/', views.track_click, name='track_click'),
     path('dashboard/search-products/', views.search_products_for_referral, name='search_products'),
     path('dashboard/delete-referral/', views.delete_referral_link, name='delete_referral'),
+
+    path('auth/register-init/', views.register_init_view, name='register_init'),
+    path('auth/register-verify/', views.register_verify_view, name='register_verify'),
 
 ]
 

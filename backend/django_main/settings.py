@@ -127,11 +127,19 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 
-CORS_ALLOWED_ORIGINS = ["http://localhost:5173",
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "unique-snowflake",
+    }
+}
 
 CORS_ALLOW_HEADERS = [
     'accept',
@@ -144,3 +152,11 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.mail.ru'
+EMAIL_PORT = 465        
+EMAIL_USE_SSL = True       
+
+EMAIL_HOST_USER = 'rs-dev@mail.ru'
+EMAIL_HOST_PASSWORD = 'owYdePImkQSbWnwqnkXo' 

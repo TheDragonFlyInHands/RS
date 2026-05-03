@@ -7,7 +7,7 @@ const LoginPage = () => {
   const [isResetMode, setIsResetMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    identifier: '', // Почта или телефон
+    identifier: '', 
     password: '',
     resetEmail: ''
   });
@@ -24,6 +24,7 @@ const LoginPage = () => {
       .then(data => {
         if (data.valid) {
           localStorage.setItem('user', JSON.stringify(data.user));
+          window.dispatchEvent(new Event('authchange'));
           navigate('/profile'); // Если токен валиден — сразу в кабинет
         }
         else{
@@ -62,6 +63,7 @@ const LoginPage = () => {
       if (response.ok && data.token) {
         localStorage.setItem('auth_token', data.token);
         localStorage.setItem('user', JSON.stringify(data));
+        window.dispatchEvent(new Event('authchange'));
         navigate('/profile');
       } else {
         alert(data.error || 'Неверный логин или пароль');
@@ -73,35 +75,36 @@ const LoginPage = () => {
     }
   };
 
-  // 🔹 Функция сброса пароля (генерация нового)
-  const handleResetPassword = async (e) => {
-    e.preventDefault();
-    if (!formData.resetEmail) {
-      return alert('Введите почту');
+const handleResetPassword = async (e) => {
+  e.preventDefault();
+  if (!formData.resetEmail.trim()) {
+    return alert('Введите почту');
+  }
+  
+  setLoading(true);
+  try {
+    const response = await fetch('http://localhost:8000/server_cm/auth/reset-password/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: formData.resetEmail.trim().toLowerCase() })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      alert('✅ Новый пароль отправлен на вашу почту. Проверьте папку "Входящие" и "Спам".');
+      setIsResetMode(false);
+      setFormData({ identifier: '', password: '', resetEmail: '' });
+    } else {
+      alert(data.error || 'Ошибка при сбросе пароля');
     }
-
-    setLoading(true);
-    try {
-      const response = await fetch('http://localhost:8000/server_cm/auth/reset-password/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: formData.resetEmail })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert(`Пароль сброшен! Новый пароль: ${data.new_password}\n(В реальном приложении он придёт на почту)`);
-        setIsResetMode(false);
-      } else {
-        alert(data.error || 'Пользователь не найден');
-      }
-    } catch (error) {
-      alert('Ошибка подключения к серверу');
-    } finally {
-      setLoading(false);
-    }
-  };
+  } catch (error) {
+    console.error(error);
+    alert('Не удалось подключиться к серверу');
+  } finally {
+    setLoading(false);
+  }
+};
 
   // 🔹 Выход из аккаунта
   const handleLogout = () => {

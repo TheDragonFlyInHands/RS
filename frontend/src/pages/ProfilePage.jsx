@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ProfilePage.scss';
 
@@ -22,6 +22,17 @@ const ProfilePage = () => {
   const [avatarPreview, setAvatarPreview] = useState(userData.avatar_url || '');
   const [avatarLabel, setAvatarLabel] = useState('');
 
+  // 🔹 Состояние для списка городов
+  const [cities, setCities] = useState([]);
+
+  // 🔹 Загрузка городов при монтировании компонента
+  useEffect(() => {
+    fetch('http://localhost:8000/server_cm/cities/')
+      .then(res => res.json())
+      .then(data => setCities(data))
+      .catch(err => console.error('Ошибка загрузки городов:', err));
+  }, []);
+
   const resetAvatarPreview = () => {
     if (avatarPreview && avatarPreview.startsWith('blob:')) {
       URL.revokeObjectURL(avatarPreview);
@@ -42,19 +53,13 @@ const ProfilePage = () => {
 
   const handleAvatarChange = (event) => {
     const [file] = event.target.files || [];
-
-    if (!file) {
-      return;
-    }
-
+    if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
       alert('Файл слишком большой. Выберите изображение до 5 МБ.');
       event.target.value = '';
       return;
     }
-
     resetAvatarPreview();
-
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
     setAvatarLabel(file.name);
@@ -63,14 +68,11 @@ const ProfilePage = () => {
 
   const handleSave = async (event) => {
     event.preventDefault();
-
     if (passwordData.newPassword && passwordData.newPassword !== passwordData.confirmPassword) {
       alert('Пароли не совпадают!');
       return;
     }
-
     setLoading(true);
-
     try {
       const token = localStorage.getItem('auth_token');
       const payload = new FormData();
@@ -78,27 +80,23 @@ const ProfilePage = () => {
       payload.append('first_name', userData.first_name || '');
       payload.append('last_name', userData.last_name || '');
       payload.append('phone', userData.phone || '');
-      payload.append('city', userData.city || '');
+      payload.append('city', userData.city || ''); // Отправляем выбранное название города
 
       if (passwordData.newPassword) {
         payload.append('newPassword', passwordData.newPassword);
         payload.append('confirmPassword', passwordData.confirmPassword);
       }
-
       if (avatarFile) {
         payload.append('avatar', avatarFile);
       }
 
       const response = await fetch('http://localhost:8000/server_cm/auth/update-profile/', {
         method: 'POST',
-        headers: {
-          'Authorization': `Token ${token}`,
-        },
+        headers: { 'Authorization': `Token ${token}` },
         body: payload,
       });
 
       const result = await response.json();
-
       if (response.ok) {
         alert('✅ Данные успешно сохранены!');
         localStorage.setItem('user', JSON.stringify(result.user));
@@ -132,27 +130,14 @@ const ProfilePage = () => {
     }
   };
 
-const handleLogout = async () => {
-  if (window.confirm('Выйти из аккаунта?')) {
-    const token = localStorage.getItem('auth_token');
-    
-    try {
-      // 1. Сообщаем серверу, что мы выходим (чтобы он удалил токен из БД)
-      await fetch('http://localhost:8000/server_cm/auth/logout/', {
-        method: 'POST',
-        headers: { 'Authorization': `Token ${token}` }
-      });
-    } catch (error) {
-      console.error('Ошибка при выходе:', error);
-    } finally {
-      // 2. Очищаем локальное хранилище в любом случае
+  const handleLogout = () => {
+    if (window.confirm('Выйти из аккаунта?')) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
-      window.dispatchEvent(new Event('authchange')); // Обновить Header
+      window.dispatchEvent(new Event('authchange'));
       navigate('/');
     }
-  }
-};
+  };
 
   const renderedAvatar = avatarPreview || userData.avatar_url || '';
 
@@ -167,27 +152,15 @@ const handleLogout = async () => {
               <span className="profile-avatar__placeholder">👤</span>
             )}
           </div>
-
           <div className="profile-header__content">
             <h2 className="profile-title">Личный кабинет</h2>
             <div className="profile-avatar__controls">
-              <button
-                type="button"
-                className="profile-avatar__button"
-                onClick={handleChooseAvatar}
-                disabled={loading}
-              >
+              <button type="button" className="profile-avatar__button" onClick={handleChooseAvatar} disabled={loading}>
                 Прикрепить фотографию
               </button>
               {avatarLabel && <span className="profile-avatar__filename">{avatarLabel}</span>}
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              className="profile-avatar__input"
-              onChange={handleAvatarChange}
-            />
+            <input ref={fileInputRef} type="file" accept="image/*" className="profile-avatar__input" onChange={handleAvatarChange} />
           </div>
         </div>
 
@@ -203,15 +176,22 @@ const handleLogout = async () => {
             </div>
             <div className="form-group">
               <label>Номер телефона</label>
-              <input type="tel" name="phone" value={userData.phone || ''} onChange={handleUserChange} />
+              <input type="tel" name="phone" value={userData.phone || ''} readOnly className="readonly-input" />
             </div>
             <div className="form-group">
               <label>Почта</label>
               <input type="email" name="email" value={userData.email || ''} readOnly className="readonly-input" />
             </div>
+            
+            {/* 🔹 Выпадающий список городов вместо текстового поля */}
             <div className="form-group">
               <label>Город</label>
-              <input type="text" name="city" value={userData.city || ''} onChange={handleUserChange} />
+              <select name="city" value={userData.city || ''} onChange={handleUserChange}>
+                <option value="">Выберите город</option>
+                {cities.map(city => (
+                  <option key={city.id} value={city.name}>{city.name}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -219,23 +199,11 @@ const handleLogout = async () => {
             <h3>Смена пароля</h3>
             <div className="form-group">
               <label>Новый пароль</label>
-              <input
-                type="password"
-                name="newPassword"
-                value={passwordData.newPassword}
-                onChange={handlePasswordChange}
-                placeholder="Оставьте пустым, если не меняете"
-              />
+              <input type="password" name="newPassword" value={passwordData.newPassword} onChange={handlePasswordChange} placeholder="Оставьте пустым, если не меняете" />
             </div>
             <div className="form-group">
               <label>Подтвердите новый пароль</label>
-              <input
-                type="password"
-                name="confirmPassword"
-                value={passwordData.confirmPassword}
-                onChange={handlePasswordChange}
-                placeholder="Повторите пароль"
-              />
+              <input type="password" name="confirmPassword" value={passwordData.confirmPassword} onChange={handlePasswordChange} placeholder="Повторите пароль" />
             </div>
           </div>
 

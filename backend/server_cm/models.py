@@ -15,8 +15,8 @@ class City(models.Model):
 
 class User(models.Model):
     """Таблица: User"""
-    email = models.EmailField(max_length=100, verbose_name="Email")
-    phone = models.CharField(max_length=20, verbose_name="Телефон")
+    email = models.EmailField(max_length=100, verbose_name="Email", unique=True)
+    phone = models.CharField(max_length=20, verbose_name="Телефон", unique=True)
     last_name = models.CharField(max_length=50, verbose_name="Фамилия")
     first_name = models.CharField(max_length=50, verbose_name="Имя")
     password = models.CharField(max_length=100, verbose_name="Пароль")
@@ -132,3 +132,22 @@ class Statistics(models.Model):
 
     def __str__(self):
         return f"Статистика для {self.ref}"
+
+class RegisterUser(models.Model):
+    """Таблица: Ожидающие регистрации пользователи"""
+    email = models.EmailField(unique=True, verbose_name="Email")
+    phone = models.CharField(max_length=20, verbose_name="Телефон", unique=True)
+    last_name = models.CharField(max_length=50, verbose_name="Фамилия")
+    first_name = models.CharField(max_length=50, verbose_name="Имя")
+    password = models.CharField(max_length=128, verbose_name="Пароль (хешированный)")
+    city = models.CharField(max_length=50, blank=True, null=True, verbose_name="Город")
+    code = models.CharField(max_length=10, verbose_name="Код подтверждения")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Дата создания")
+
+    class Meta:
+        db_table = 'RegisterUser'
+        verbose_name = 'Ожидающий регистрации пользователь'
+        verbose_name_plural = 'Ожидающие регистрации'
+
+    def __str__(self):
+        return f"{self.email} (код: {self.code})"

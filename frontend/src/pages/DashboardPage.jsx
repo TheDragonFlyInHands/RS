@@ -11,10 +11,9 @@ const DashboardPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchData = async () => {
-    const token = localStorage.getItem('auth_token');
     try {
       const res = await fetch('http://localhost:8000/server_cm/dashboard/stats/', {
-        headers: { 'Authorization': `Token ${token}` }
+        credentials: 'include'
       });
       const data = await res.json();
       if (res.ok) {

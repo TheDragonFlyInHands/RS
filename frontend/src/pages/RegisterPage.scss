@@ -158,3 +158,45 @@
   .register-title { font-size: 22px; }
   .code-input { font-size: 18px; letter-spacing: 4px; }
 }
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.form-input.is-error, .code-input.is-error {
+  border-color: #ff4d4f !important;
+  background-color: #fff1f0;
+}
+
+.form-error {
+  font-size: 12px;
+  color: #ff4d4f;
+  margin-top: -2px;
+}
+
+.server-error {
+  background: #fff2f0;
+  border: 1px solid #ffccc7;
+  color: #cf1322;
+  padding: 10px;
+  border-radius: $radius-sm;
+  font-size: 14px;
+  text-align: center;
+}
+
+.btn-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .form-row { grid-template-columns: 1fr; }
+}

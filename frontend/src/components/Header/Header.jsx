@@ -51,13 +51,12 @@ const Header = () => {
     checkAuth();
     
     // Слушатели для обновления при изменении localStorage
-    const handleStorageChange = () => checkAuth();
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('focus', handleStorageChange);
+    const handleChangeAuth = () => checkAuth();
+    window.addEventListener('authchange', handleChangeAuth);
+
     
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('focus', handleStorageChange);
+      window.removeEventListener('authchange', handleChangeAuth);
     };
   }, []);
 

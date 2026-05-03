@@ -13,6 +13,10 @@ import uuid
 from django.db import transaction
 import random
 from django.db.models import Sum, Count, Q
+from .models import RegisterUser
+from datetime import timedelta
+from django.utils import timezone
+from django.core.mail import send_mail
 
 def get_employee_dashboard(request):
     """Возвращает статистику и список реферальных ссылок сотрудника"""
@@ -452,20 +456,17 @@ def login_view(request):
         if not check_password(password, user.password):
             return JsonResponse({'error': 'Неверный пароль'}, status=401)
         
-        # ✅ Генерируем безопасный токен (64 символа)
         new_token = secrets.token_hex(32)
-        
-        # ✅ Сохраняем токен в базу данных
+
         user.token = new_token
         user.save()
-        
-        # Формируем ссылку на аватар, если есть
+
         avatar_url = ""
         if user.id_image:
             avatar_url = request.build_absolute_uri(f'{settings.MEDIA_URL}{user.id_image}')
 
         return JsonResponse({
-            'token': new_token,  # Отправляем новый токен
+            'token': new_token,
             'user_id': user.id,
             'email': user.email,
             'first_name': user.first_name,
@@ -537,12 +538,10 @@ def update_profile(request):
 
     first_name = request.POST.get('first_name', user.first_name)
     last_name = request.POST.get('last_name', user.last_name)
-    phone = request.POST.get('phone', user.phone)
     city = request.POST.get('city', user.city)
 
     user.first_name = first_name
     user.last_name = last_name
-    user.phone = phone
     user.city = city
 
     new_password = request.POST.get('newPassword')
@@ -579,3 +578,162 @@ def update_profile(request):
             'avatar_url': avatar_url, 
         }
     })
+
+
+def register_init_view(request):
+    """Шаг 1: Валидация, создание записи, отправка письма"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        email = data.get('email', '').strip().lower()
+        phone = data.get('phone', '').strip()
+        first_name = data.get('first_name', '').strip()
+        last_name = data.get('last_name', '').strip()
+        password = data.get('password', '')
+        city = data.get('city', '').strip()
+
+        if not all([email, phone, first_name, last_name, password]):
+            return JsonResponse({'error': 'Заполните все обязательные поля'}, status=400)
+
+        if len(password) < 6:
+            return JsonResponse({'error': 'Пароль должен быть не менее 6 символов'}, status=400)
+
+        if User.objects.filter(email=email).exists():
+            return JsonResponse({'error': 'Пользователь с такой почтой уже существует'}, status=400)
+
+        if User.objects.filter(phone=phone).exists():
+            return JsonResponse({'error': 'Этот номер телефона уже зарегистрирован'}, status=400)
+
+        # Генерация кода
+        code = str(random.randint(100000, 999999))
+
+        if RegisterUser.objects.filter(email=email).exists():
+            RegisterUser.objects.filter(email=email).delete()
+
+        # Сохраняем во временную таблицу
+        RegisterUser.objects.create(
+            email=email, phone=phone, first_name=first_name,
+            last_name=last_name, password=make_password(password),
+            city=city, code=code
+        )
+
+        # 📧 ОТПРАВКА ПИСЬМА
+        try:
+            subject = 'Код подтверждения для BankOffers'
+            message = f'Здравствуйте, {first_name}!\n\nВаш код для подтверждения регистрации: {code}\n\nВведите его на сайте.'
+            
+            send_mail(
+                subject,
+                message,
+                settings.EMAIL_HOST_USER,  # От кого
+                [email],                   # Кому
+                fail_silently=False,       # Если False, при ошибке вылетит исключение
+            )
+            
+            # Для отладки (можно убрать потом)
+            print(f"✅ Письмо с кодом {code} отправлено на {email}")
+            
+            return JsonResponse({'message': 'Код успешно отправлен на почту', 'email': email})
+            
+        except Exception as e:
+            # Если письмо не ушло, но данные в БД сохранились
+            print(f"❌ Ошибка отправки письма: {e}")
+            return JsonResponse({'error': 'Код сохранен, но не удалось отправить письмо (проверьте настройки сервера)'}, status=500)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+def register_verify_view(request):
+    """Шаг 2: Проверка кода и создание реального пользователя"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    try:
+        data = json.loads(request.body)
+        email = data.get('email', '').strip().lower()
+        code = data.get('code', '').strip()
+
+        if not email or not code:
+            return JsonResponse({'error': 'Введите почту и код'}, status=400)
+
+        try:
+            pending = RegisterUser.objects.get(email=email, code=code)
+        except RegisterUser.DoesNotExist:
+            return JsonResponse({'error': 'Неверный код или почта'}, status=400)
+
+        # Проверка срока действия (15 минут)
+        if timezone.now() > pending.created_at + timedelta(minutes=15):
+            pending.delete()
+            return JsonResponse({'error': 'Код устарел. Попробуйте зарегистрироваться снова.'}, status=400)
+
+        # Создаём реального пользователя
+        User.objects.create(
+            email=pending.email,
+            phone=pending.phone,
+            first_name=pending.first_name,
+            last_name=pending.last_name,
+            password=pending.password, # Уже захеширован
+            city=pending.city,
+            is_employee=False,
+            token=''
+        )
+
+        pending.delete() # Очищаем временную запись
+        return JsonResponse({'message': 'Регистрация успешна! Теперь вы можете войти.'})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+def reset_password_view(request):
+    """Сброс пароля: генерация нового пароля и отправка на почту"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        email = data.get('email', '').strip().lower()
+        
+        if not email:
+            return JsonResponse({'error': 'Введите почту'}, status=400)
+        
+        # Ищем пользователя
+        user = User.objects.filter(email=email).first()
+        if not user:
+            return JsonResponse({'error': 'Пользователь с такой почтой не найден'}, status=404)
+        
+        # Генерация надёжного пароля (10 символов: буквы + цифры)
+        new_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(10))
+        
+        # Хешируем и сохраняем новый пароль
+        user.password = make_password(new_password)
+        user.save()
+        
+        # 📧 Отправка письма с новым паролем
+        try:
+            subject = 'Восстановление пароля для BankOffers'
+            message = (
+                f'Здравствуйте, {user.first_name}!\n\n'
+                f'Ваш новый пароль для входа: {new_password}\n\n'
+                f'Рекомендуем сменить его после входа в личный кабинет.\n'
+                f'Если вы не запрашивали сброс пароля — проигнорируйте это письмо.'
+            )
+            
+            send_mail(
+                subject,
+                message,
+                settings.EMAIL_HOST_USER,  # От кого (ваша почта)
+                [email],                   # Кому
+                fail_silently=False,
+            )
+            
+            print(f"✅ Письмо с новым паролем отправлено на {email}")
+            
+            # ⚠️ В продакшене НЕ возвращайте пароль в ответе!
+            return JsonResponse({'message': 'Новый пароль отправлен на вашу почту'})
+            
+        except Exception as mail_error:
+            print(f"❌ Ошибка отправки письма: {mail_error}")
+            return JsonResponse({'error': 'Не удалось отправить письмо. Попробуйте позже.'}, status=500)
+            
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
