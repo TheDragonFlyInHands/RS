@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.scss';
+import Wallpaper from './components/WallPapers/Wallpaper';
 import Header from './components/Header/Header';
 import WelcomePage from './pages/WelcomePage';
 import CatalogPage from './pages/CatalogPage';
@@ -44,6 +45,7 @@ function App() {
             }}
           />
         )}
+        <Wallpaper />
       </div>
     </Router>
   );

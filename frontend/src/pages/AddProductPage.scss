@@ -16,6 +16,11 @@
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(240px, 0.8fr);
   gap: 24px;
+  
+  > * {
+    grid-column: 1 / -1; // Занимаем все колонки
+    text-align: center;
+  }
 
   h1 {
     color: $color-orange;
@@ -27,6 +32,7 @@
     max-width: 720px;
     line-height: 1.6;
     color: rgba(255, 255, 255, 0.9);
+    margin: 0 auto; // центрируем параграфы
   }
 }
 

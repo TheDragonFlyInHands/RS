@@ -10,6 +10,7 @@ body {
   font-family: $font-main;
   background-color: $color-bg-gray;
   color: $color-black;
+
 }
 
 .app {
@@ -20,8 +21,10 @@ body {
   overflow-x: hidden;
 }
 
-header, footer {
+header, footer, main {
   width: 100%;
+  position: relative;
+  z-index: 1;
 }
 
 main {

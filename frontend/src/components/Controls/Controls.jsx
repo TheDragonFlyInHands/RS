@@ -1,5 +1,5 @@
 import React from 'react';
-import { categories, cities } from '../../data/offersData';
+import { categories} from '../../data/offersData';
 import './Controls.scss';
 
 const Controls = ({ 
