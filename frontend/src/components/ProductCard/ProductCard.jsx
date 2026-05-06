@@ -7,9 +7,11 @@ const ProductCard = ({ id }) => {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Загружаем продукт при изменении id.
   useEffect(() => {
     let mounted = true;
 
+    // Асинхронная логика загрузки.
     const run = async () => {
       setLoading(true);
       try {

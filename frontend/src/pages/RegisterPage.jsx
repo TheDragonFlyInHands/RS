@@ -5,8 +5,8 @@ import { apiGet, apiPost } from '../api/client';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
 
+  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -23,6 +23,7 @@ const RegisterPage = () => {
   const [serverError, setServerError] = useState('');
   const [timer, setTimer] = useState(0);
 
+  // Загрузка списка городов при первом входе на страницу.
   useEffect(() => {
     const run = async () => {
       try {
@@ -36,6 +37,7 @@ const RegisterPage = () => {
     run();
   }, []);
 
+  // Считаем таймер повторной отправки кода.
   useEffect(() => {
     let interval;
 
@@ -46,12 +48,14 @@ const RegisterPage = () => {
     return () => clearInterval(interval);
   }, [timer]);
 
+  // Обработчик ввода в поля формы.
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     setServerError('');
   };
 
+  // Маскируем email в интерфейсе.
   const maskEmail = (email) => {
     if (!email.includes('@')) return email;
     const [local, domain] = email.split('@');
@@ -59,6 +63,7 @@ const RegisterPage = () => {
     return `${local[0]}${'*'.repeat(local.length - 1)}@${domain}`;
   };
 
+  // Шаг 1: старт регистрации (отправка кода).
   const handleRegisterInit = async (e) => {
     e.preventDefault();
 
@@ -100,6 +105,7 @@ const RegisterPage = () => {
     }
   };
 
+  // Шаг 2: подтверждение кода.
   const handleRegisterVerify = async (e) => {
     e.preventDefault();
 
@@ -122,7 +128,7 @@ const RegisterPage = () => {
         return;
       }
 
-      alert('✅ Регистрация успешна! Теперь вы можете войти.');
+      alert('Регистрация успешна! Теперь вы можете войти.');
       navigate('/login');
     } catch (err) {
       setServerError('Не удалось подключиться к серверу');
@@ -132,6 +138,7 @@ const RegisterPage = () => {
     }
   };
 
+  // Повторная отправка кода (ограничена таймером).
   const handleResendCode = async () => {
     if (timer > 0) return;
 
@@ -169,6 +176,7 @@ const RegisterPage = () => {
         {step === 1 && (
           <>
             <h2 className="register-title">Регистрация</h2>
+
             <form onSubmit={handleRegisterInit} className="register-form">
               <div className="form-row">
                 <input
@@ -264,6 +272,7 @@ const RegisterPage = () => {
         {step === 2 && (
           <div className="verification-step">
             <h2 className="register-title">Подтверждение почты</h2>
+
             <p className="verification-text">
               Мы отправили код подтверждения на <strong>{maskEmail(formData.email)}</strong>
             </p>

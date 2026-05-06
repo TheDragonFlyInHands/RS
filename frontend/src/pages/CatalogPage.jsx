@@ -16,9 +16,9 @@ const CatalogPage = () => {
 
   const [productIds, setProductIds] = useState([]);
   const [loading, setLoading] = useState(true);
-
   const [cities, setCities] = useState([]);
 
+  // Загружаем города один раз при первом монтировании страницы.
   useEffect(() => {
     const run = async () => {
       try {
@@ -32,8 +32,17 @@ const CatalogPage = () => {
     run();
   }, []);
 
+  // Перезапрашиваем продукты при изменении фильтров.
+  useEffect(() => {
+    setCurrentPage(1);
+    fetchProductIds();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchValue, sortValue, categoryValue, cityValue]);
+
+  // Загружаем id продуктов с сервера по текущим фильтрам.
   const fetchProductIds = async () => {
     setLoading(true);
+
     try {
       const params = {
         category: categoryValue,
@@ -48,11 +57,7 @@ const CatalogPage = () => {
         params,
       });
 
-      if (data?.ids) {
-        setProductIds(data.ids);
-      } else {
-        setProductIds([]);
-      }
+      setProductIds(Array.isArray(data?.ids) ? data.ids : []);
     } catch (error) {
       console.error('Ошибка загрузки продуктов:', error);
     } finally {
@@ -60,17 +65,12 @@ const CatalogPage = () => {
     }
   };
 
-  useEffect(() => {
-    setCurrentPage(1);
-    fetchProductIds();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchValue, sortValue, categoryValue, cityValue]);
-
   const totalPages = Math.ceil(productIds.length / ITEMS_PER_PAGE) || 1;
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const paginatedIds = productIds.slice(startIndex, endIndex);
 
+  // Универсальный обработчик смены селектов/инпутов фильтра.
   const handleFilterChange = (setter) => (e) => {
     setter(e.target.value);
   };
@@ -97,7 +97,7 @@ const CatalogPage = () => {
             {paginatedIds.length > 0 ? (
               paginatedIds.map((id) => <ProductCard key={id} id={id} />)
             ) : (
-              <div className="no-results">По вашему запросу ничего не найдено 😕</div>
+              <div className="no-results">По вашему запросу ничего не найдено</div>
             )}
           </div>
 

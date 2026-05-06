@@ -23,7 +23,6 @@ const ProfilePage = () => {
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(userData.avatar_url || '');
   const [avatarLabel, setAvatarLabel] = useState('');
-
   const [cities, setCities] = useState([]);
 
   useEffect(() => {
@@ -46,11 +45,13 @@ const ProfilePage = () => {
   };
 
   const handleUserChange = (event) => {
-    setUserData((prev) => ({ ...prev, [event.target.name]: event.target.value }));
+    const { name, value } = event.target;
+    setUserData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handlePasswordChange = (event) => {
-    setPasswordData((prev) => ({ ...prev, [event.target.name]: event.target.value }));
+    const { name, value } = event.target;
+    setPasswordData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleChooseAvatar = () => {
@@ -77,15 +78,13 @@ const ProfilePage = () => {
   const handleSave = async (event) => {
     event.preventDefault();
 
-    if (
-      passwordData.newPassword &&
-      passwordData.newPassword !== passwordData.confirmPassword
-    ) {
+    if (passwordData.newPassword && passwordData.newPassword !== passwordData.confirmPassword) {
       alert('Пароли не совпадают!');
       return;
     }
 
     setLoading(true);
+
     try {
       const payload = new FormData();
 
@@ -98,6 +97,7 @@ const ProfilePage = () => {
         payload.append('newPassword', passwordData.newPassword);
         payload.append('confirmPassword', passwordData.confirmPassword);
       }
+
       if (avatarFile) {
         payload.append('avatar', avatarFile);
       }
@@ -105,18 +105,20 @@ const ProfilePage = () => {
       const result = await apiPost('/auth/update-profile/', payload);
 
       if (result?.user) {
-        alert('✅ Данные успешно сохранены!');
+        alert('Данные успешно сохранены.');
         localStorage.setItem('user', JSON.stringify(result.user));
         setUserData(result.user);
         setOriginalData(result.user);
         setPasswordData({ newPassword: '', confirmPassword: '' });
         setAvatarFile(null);
+
         resetAvatarPreview();
         setAvatarPreview(result.user.avatar_url || '');
         setAvatarLabel('');
+
         window.dispatchEvent(new Event('authchange'));
       } else {
-        alert(`❌ ${result?.error || 'Ошибка сохранения'}`);
+        alert(result?.error || 'Ошибка сохранения');
       }
     } catch (error) {
       console.error('Ошибка сети:', error);
@@ -131,6 +133,7 @@ const ProfilePage = () => {
       setUserData(originalData);
       setPasswordData({ newPassword: '', confirmPassword: '' });
       setAvatarFile(null);
+
       resetAvatarPreview();
       setAvatarPreview(originalData.avatar_url || '');
       setAvatarLabel('');
@@ -154,17 +157,15 @@ const ProfilePage = () => {
         <div className="profile-header">
           <div className="profile-avatar">
             {renderedAvatar ? (
-              <img
-                src={renderedAvatar}
-                alt="Фото профиля"
-                className="profile-avatar__image"
-              />
+              <img src={renderedAvatar} alt="Фото профиля" className="profile-avatar__image" />
             ) : (
-              <span className="profile-avatar__placeholder">👤</span>
+              <span className="profile-avatar__placeholder">Нет фото</span>
             )}
           </div>
+
           <div className="profile-header__content">
             <h2 className="profile-title">Личный кабинет</h2>
+
             <div className="profile-avatar__controls">
               <button
                 type="button"
@@ -174,8 +175,10 @@ const ProfilePage = () => {
               >
                 Прикрепить фотографию
               </button>
+
               {avatarLabel && <span className="profile-avatar__filename">{avatarLabel}</span>}
             </div>
+
             <input
               ref={fileInputRef}
               type="file"
@@ -190,22 +193,14 @@ const ProfilePage = () => {
           <div className="form-section">
             <div className="form-group">
               <label>Имя</label>
-              <input
-                type="text"
-                name="first_name"
-                value={userData.first_name || ''}
-                onChange={handleUserChange}
-              />
+              <input type="text" name="first_name" value={userData.first_name || ''} onChange={handleUserChange} />
             </div>
+
             <div className="form-group">
               <label>Фамилия</label>
-              <input
-                type="text"
-                name="last_name"
-                value={userData.last_name || ''}
-                onChange={handleUserChange}
-              />
+              <input type="text" name="last_name" value={userData.last_name || ''} onChange={handleUserChange} />
             </div>
+
             <div className="form-group">
               <label>Номер телефона</label>
               <input
@@ -216,6 +211,7 @@ const ProfilePage = () => {
                 className="readonly-input"
               />
             </div>
+
             <div className="form-group">
               <label>Почта</label>
               <input
@@ -242,6 +238,7 @@ const ProfilePage = () => {
 
           <div className="form-section password-section">
             <h3>Смена пароля</h3>
+
             <div className="form-group">
               <label>Новый пароль</label>
               <input
@@ -252,6 +249,7 @@ const ProfilePage = () => {
                 placeholder="Оставьте пустым, если не меняете"
               />
             </div>
+
             <div className="form-group">
               <label>Подтвердите новый пароль</label>
               <input
@@ -268,9 +266,11 @@ const ProfilePage = () => {
             <button type="button" className="btn-cancel" onClick={handleCancel} disabled={loading}>
               Отмена
             </button>
+
             <button type="submit" className="btn-save" disabled={loading}>
               {loading ? 'Сохранение...' : 'Сохранить'}
             </button>
+
             <button type="button" className="btn-logout" onClick={handleLogout} disabled={loading}>
               Выйти
             </button>

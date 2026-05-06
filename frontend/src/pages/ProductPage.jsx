@@ -12,9 +12,11 @@ const ProductPage = () => {
   const hasTrackedView = useRef(false);
   const hasTrackedClick = useRef(false);
 
+  // Загружаем продукт при изменении productId.
   useEffect(() => {
     setLoading(true);
     setError('');
+
     hasTrackedView.current = false;
     hasTrackedClick.current = false;
 
@@ -33,28 +35,30 @@ const ProductPage = () => {
     run();
   }, [productId]);
 
+  // Трекинг просмотра: отправляем один раз, если есть referral_id.
   useEffect(() => {
     if (!product?.referral_id || hasTrackedView.current) return;
 
     hasTrackedView.current = true;
 
     apiPost('/dashboard/track/view/', { referral_id: product.referral_id }).catch((err) => {
-      console.error('❌ Ошибка трекинга просмотра:', err);
+      console.error('Ошибка трекинга просмотра:', err);
     });
   }, [product]);
 
+  // Обработчик клика по действию оформления.
   const handleGoToBank = () => {
     if (!product?.referral_id || hasTrackedClick.current) return;
 
     hasTrackedClick.current = true;
 
     apiPost('/dashboard/track/click/', { referral_id: product.referral_id }).catch((err) => {
-      console.error('❌ Ошибка трекинга клика:', err);
+      console.error('Ошибка трекинга клика:', err);
     });
   };
 
   if (loading) {
-    return <div className="product-page__loader">⏳ Загрузка продукта...</div>;
+    return <div className="product-page__loader">Загрузка продукта...</div>;
   }
 
   if (error || !product) {
@@ -128,7 +132,7 @@ const ProductPage = () => {
                 className="btn btn--primary btn--lg"
                 onClick={handleGoToBank}
               >
-                🚀 Оформить предложение
+                Оформить предложение
               </a>
             ) : (
               <button className="btn btn--disabled btn--lg" disabled>

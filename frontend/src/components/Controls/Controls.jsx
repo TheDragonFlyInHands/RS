@@ -14,8 +14,8 @@ const Controls = ({
       
       <div className="controls__filters">
         <select value={sortValue} onChange={onSortChange} className="filter-select">
-          <option value="newest">📅 Сначала новые</option>
-          <option value="oldest">📅 Сначала старые</option>
+          <option value="newest"> Сначала новые</option>
+          <option value="oldest"> Сначала старые</option>
         </select>
         
         <select value={categoryValue} onChange={onCategoryChange} className="filter-select">
@@ -25,7 +25,7 @@ const Controls = ({
         </select>
         
         <select value={cityValue} onChange={onCityChange} className="filter-select">
-          <option value="all">🏙️ Все города</option>
+          <option value="all"> Все города</option>
           {cities.map(city => (
             <option key={city.name} value={city.id}>{city.name}</option>
           ))}
@@ -37,7 +37,7 @@ const Controls = ({
         value={searchValue}
         onChange={onSearchChange}
         className="controls__search"
-        placeholder="🔍 Поиск по названию банка или предложению..."
+        placeholder=" Поиск по названию банка или предложению..."
       />
     </div>
   );
