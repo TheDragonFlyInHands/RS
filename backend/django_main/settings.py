@@ -81,9 +81,9 @@ WSGI_APPLICATION = 'django_main.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres',
-        'PASSWORD': 'YouStupiD2002',
+        'NAME': '',
+        'USER': '',
+        'PASSWORD': '',
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -156,5 +156,5 @@ EMAIL_HOST = 'smtp.mail.ru'
 EMAIL_PORT = 465        
 EMAIL_USE_SSL = True       
 
-EMAIL_HOST_USER = 'rs-dev@mail.ru'
-EMAIL_HOST_PASSWORD = 'owYdePImkQSbWnwqnkXo'
+EMAIL_HOST_USER = ''
+EMAIL_HOST_PASSWORD = ''
